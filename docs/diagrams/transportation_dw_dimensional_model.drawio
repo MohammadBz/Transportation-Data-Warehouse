@@ -1,115 +1,87 @@
-<mxfile host="app.diagrams.net" modified="2026-06-05T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
-  <diagram id="transportation-dw-dimensional-model" name="DW Dimensional Model">
-    <mxGraphModel dx="1920" dy="1080" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+<mxfile host="app.diagrams.net" modified="2026-06-07T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="transportation-dw" name="Transportation DW">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
       <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
 
-        <mxCell id="title" value="Transportation Data Warehouse - Kimball Dimensional Model" style="text;html=1;strokeColor=none;fillColor=none;fontSize=24;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="400" y="20" width="1000" height="40" as="geometry"/>
-        </mxCell>
-        <mxCell id="subtitle" value="Conformed dimensions support annual ridership/service facts, monthly snapshot facts, service availability, and ridership lifecycle analysis." style="text;html=1;strokeColor=none;fillColor=none;fontSize=13;align=center;verticalAlign=middle;fontColor=#4b5563;" vertex="1" parent="1">
-          <mxGeometry x="360" y="60" width="1080" height="30" as="geometry"/>
+        <mxCell id="title" value="Transportation Data Warehouse - Dimensional Model" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=24;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="360" y="30" width="880" height="40" as="geometry" />
         </mxCell>
 
-        <mxCell id="fact_zone" value="Fact Tables" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffaf0;strokeColor=#d6b656;fontSize=14;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="610" y="125" width="610" height="825" as="geometry"/>
+        <mxCell id="dim_date" value="&lt;b&gt;DimDate&lt;/b&gt;&lt;hr&gt;PK DateKey&lt;br&gt;FullDate&lt;br&gt;CalendarMonth&lt;br&gt;CalendarQuarter&lt;br&gt;CalendarYear" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="250" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_agency" value="&lt;b&gt;DimAgency&lt;/b&gt;&lt;hr&gt;PK AgencyKey&lt;br&gt;NK NTD ID&lt;br&gt;AgencyName&lt;br&gt;ReporterType&lt;br&gt;ReportingModule&lt;br&gt;OrganizationType&lt;br&gt;City / State / Region" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="310" width="250" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_mode" value="&lt;b&gt;DimMode&lt;/b&gt;&lt;hr&gt;PK ModeKey&lt;br&gt;NK ModeCode&lt;br&gt;ModeName&lt;br&gt;RailBusFerryGroup&lt;br&gt;RailFlag&lt;br&gt;FixedRouteFlag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="540" width="250" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_service_type" value="&lt;b&gt;DimServiceType&lt;/b&gt;&lt;hr&gt;PK ServiceTypeKey&lt;br&gt;NK TOSCode&lt;br&gt;ServiceTypeName&lt;br&gt;ServiceCategory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="750" width="250" height="140" as="geometry" />
         </mxCell>
 
-        <mxCell id="fact_annual" value="&lt;b&gt;Fact_Ridership_Transaction&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Grain&lt;/b&gt;: Agency + Mode + TOS + Year&lt;br&gt;&lt;b&gt;Source&lt;/b&gt;: TS2.1 Current + Archive&lt;br&gt;&lt;br&gt;&lt;b&gt;FKs&lt;/b&gt;&lt;br&gt;AgencyKey, ModeKey, ServiceTypeKey&lt;br&gt;DateKey (year), UrbanAreaKey&lt;br&gt;ReporterTypeKey&lt;br&gt;&lt;br&gt;&lt;b&gt;Measures&lt;/b&gt;&lt;br&gt;UPT, PMT, VRM, VRH, VOMS&lt;br&gt;DRM, Fares&lt;br&gt;OperatingExpense_Total&lt;br&gt;OperatingExpense_VO/VM/NVM/GA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="650" y="175" width="250" height="330" as="geometry"/>
+        <mxCell id="fact_annual" value="&lt;b&gt;Fact_Annual_Service_Performance&lt;/b&gt;&lt;hr&gt;FK DateKey&lt;br&gt;FK AgencyKey&lt;br&gt;FK ModeKey&lt;br&gt;FK ServiceTypeKey&lt;br&gt;FK UrbanAreaKey&lt;br&gt;FK ServiceStatusKey&lt;br&gt;&lt;br&gt;UPT, PMT, VRM, VRH, VOMS&lt;br&gt;DRM, Fares, Operating Expenses" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="520" y="110" width="330" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="fact_monthly" value="&lt;b&gt;Fact_Monthly_Service_Performance&lt;/b&gt;&lt;hr&gt;FK DateKey&lt;br&gt;FK AgencyKey&lt;br&gt;FK ModeKey&lt;br&gt;FK ServiceTypeKey&lt;br&gt;FK UrbanAreaKey&lt;br&gt;&lt;br&gt;VOMS&lt;br&gt;VehicleRevenueMiles&lt;br&gt;VehicleRevenueHours&lt;br&gt;UnlinkedPassengerTrips" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="520" y="370" width="330" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="fact_safety" value="&lt;b&gt;Fact_Major_Safety_Event&lt;/b&gt;&lt;hr&gt;FK EventDateKey&lt;br&gt;FK AgencyKey&lt;br&gt;FK ModeKey&lt;br&gt;FK ServiceTypeKey&lt;br&gt;FK UrbanAreaKey&lt;br&gt;FK SafetyEventTypeKey&lt;br&gt;&lt;br&gt;EventCount&lt;br&gt;FatalityCount&lt;br&gt;InjuryCount" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="520" y="620" width="330" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="fact_availability" value="&lt;b&gt;Fact_Service_Availability&lt;/b&gt;&lt;hr&gt;FK AgencyKey&lt;br&gt;FK ModeKey&lt;br&gt;FK ServiceTypeKey&lt;br&gt;FK StartDateKey&lt;br&gt;FK EndDateKey&lt;br&gt;FK ServiceStatusKey" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="990" y="210" width="330" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="fact_lifecycle" value="&lt;b&gt;Fact_Service_Lifecycle_Accumulating&lt;/b&gt;&lt;hr&gt;FK AgencyKey&lt;br&gt;FK ModeKey&lt;br&gt;FK ServiceTypeKey&lt;br&gt;FK UrbanAreaKey&lt;br&gt;FK ServiceStatusKey&lt;br&gt;FK CommitmentDateKey&lt;br&gt;FK StartServiceDateKey&lt;br&gt;FK FirstObservedDateKey&lt;br&gt;FK PeakRidershipDateKey&lt;br&gt;FK LatestObservedDateKey&lt;br&gt;FK EndServiceDateKey&lt;br&gt;&lt;br&gt;MonthsInService&lt;br&gt;MonthsStartToPeak&lt;br&gt;PeakMonthlyUPT&lt;br&gt;LatestMonthlyUPT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="990" y="430" width="330" height="330" as="geometry" />
         </mxCell>
 
-        <mxCell id="fact_monthly" value="&lt;b&gt;Fact_Transportation_Monthly_Snapshot&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Grain&lt;/b&gt;: Agency + Mode + TOS + Month&lt;br&gt;&lt;b&gt;Source&lt;/b&gt;: Monthly Modal Time Series&lt;br&gt;&lt;br&gt;&lt;b&gt;FKs&lt;/b&gt;&lt;br&gt;AgencyKey, ModeKey, ServiceTypeKey&lt;br&gt;DateKey (month), UrbanAreaKey&lt;br&gt;OrganizationTypeKey&lt;br&gt;&lt;br&gt;&lt;b&gt;Measures&lt;/b&gt;&lt;br&gt;VOMS&lt;br&gt;VehicleRevenueMiles / Hours&lt;br&gt;UnlinkedPassengerTrips&lt;br&gt;TotalEvents / Collisions&lt;br&gt;Fatalities / Injuries&lt;br&gt;AssaultsOnTransitWorkers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="930" y="175" width="250" height="330" as="geometry"/>
+        <mxCell id="dim_urban_area" value="&lt;b&gt;DimUrbanArea&lt;/b&gt;&lt;hr&gt;PK UrbanAreaKey&lt;br&gt;NK UACECode&lt;br&gt;UZAName&lt;br&gt;UZASqMiles&lt;br&gt;UZAPopulation&lt;br&gt;ServiceAreaSqMiles&lt;br&gt;ServiceAreaPopulation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="60" y="930" width="250" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_service_status" value="&lt;b&gt;DimServiceStatus&lt;/b&gt;&lt;hr&gt;PK ServiceStatusKey&lt;br&gt;ServiceStatus&lt;br&gt;AgencyStatus&lt;br&gt;ModeStatus&lt;br&gt;SeasonalSegmentFlag&lt;br&gt;FixedGuidewayFlag&lt;br&gt;ServiceActiveFlag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="240" width="250" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_safety_event_type" value="&lt;b&gt;DimSafetyEventType&lt;/b&gt;&lt;hr&gt;PK SafetyEventTypeKey&lt;br&gt;EventCategory&lt;br&gt;EventType&lt;br&gt;EventSubType&lt;br&gt;SeverityLevel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#111827;align=left;spacing=10;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="610" width="250" height="150" as="geometry" />
         </mxCell>
 
-        <mxCell id="fact_availability" value="&lt;b&gt;Fact_Service_Availability&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Grain&lt;/b&gt;: Agency + Mode + TOS + service period&lt;br&gt;&lt;b&gt;Source&lt;/b&gt;: Agency Mode Type of Service&lt;br&gt;&lt;b&gt;Type&lt;/b&gt;: factless fact&lt;br&gt;&lt;br&gt;&lt;b&gt;FKs&lt;/b&gt;&lt;br&gt;AgencyKey, ModeKey, ServiceTypeKey&lt;br&gt;StartDateKey, EndDateKey&lt;br&gt;ServiceStatusKey&lt;br&gt;&lt;br&gt;&lt;b&gt;Degenerate / Flags&lt;/b&gt;&lt;br&gt;RailFlag, FixedRouteFlag&lt;br&gt;SeasonalSegmentFlag&lt;br&gt;FixedGuidewayFlag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="650" y="565" width="250" height="310" as="geometry"/>
-        </mxCell>
+        <mxCell id="e_date_annual" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_date" target="fact_annual"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_date_monthly" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_date" target="fact_monthly"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_date_safety" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_date" target="fact_safety"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_date_availability" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_date" target="fact_availability"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_date_lifecycle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_date" target="fact_lifecycle"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="fact_lifecycle" value="&lt;b&gt;Fact_Ridership_Lifecycle&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Grain&lt;/b&gt;: Agency + Mode + TOS lifecycle&lt;br&gt;&lt;b&gt;Source&lt;/b&gt;: monthly + annual history&lt;br&gt;&lt;b&gt;Type&lt;/b&gt;: accumulating snapshot&lt;br&gt;&lt;br&gt;&lt;b&gt;FKs&lt;/b&gt;&lt;br&gt;AgencyKey, ModeKey, ServiceTypeKey&lt;br&gt;StartDateKey, GrowthDateKey&lt;br&gt;PeakDateKey, DeclineStartDateKey&lt;br&gt;LifecycleStageKey&lt;br&gt;&lt;br&gt;&lt;b&gt;Measures&lt;/b&gt;&lt;br&gt;PeakRidership, MonthsToPeak&lt;br&gt;GrowthRatePct, DeclineRatePct" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="930" y="565" width="250" height="310" as="geometry"/>
-        </mxCell>
+        <mxCell id="e_agency_annual" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_agency" target="fact_annual"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_agency_monthly" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_agency" target="fact_monthly"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_agency_safety" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_agency" target="fact_safety"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_agency_availability" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_agency" target="fact_availability"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_agency_lifecycle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_agency" target="fact_lifecycle"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="dim_date" value="&lt;b&gt;DimDate&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; DateKey&lt;br&gt;FullDate&lt;br&gt;DayName&lt;br&gt;CalendarWeek&lt;br&gt;CalendarMonth&lt;br&gt;MonthName&lt;br&gt;CalendarQuarter&lt;br&gt;CalendarYear&lt;br&gt;MonthStartDateKey&lt;br&gt;MonthEndDateKey&lt;br&gt;&lt;br&gt;&lt;i&gt;Source: dimdates.csv&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="170" y="120" width="250" height="230" as="geometry"/>
-        </mxCell>
+        <mxCell id="e_mode_annual" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_mode" target="fact_annual"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_mode_monthly" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_mode" target="fact_monthly"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_mode_safety" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_mode" target="fact_safety"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_mode_availability" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_mode" target="fact_availability"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_mode_lifecycle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_mode" target="fact_lifecycle"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="dim_agency" value="&lt;b&gt;DimAgency&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; AgencyKey&lt;br&gt;&lt;b&gt;NK&lt;/b&gt; NTD ID / Legacy NTD ID&lt;br&gt;AgencyName&lt;br&gt;DoingBusinessAs&lt;br&gt;ReporterAcronym&lt;br&gt;DivisionDepartment&lt;br&gt;StateParentNTDID&lt;br&gt;City, State, Zip&lt;br&gt;URL&lt;br&gt;FTARrecipientID&lt;br&gt;UEID&lt;br&gt;&lt;br&gt;&lt;i&gt;SCD Type 2 candidate&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="170" y="380" width="250" height="260" as="geometry"/>
-        </mxCell>
+        <mxCell id="e_tos_annual" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_type" target="fact_annual"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_tos_monthly" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_type" target="fact_monthly"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_tos_safety" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_type" target="fact_safety"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_tos_availability" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_type" target="fact_availability"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_tos_lifecycle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_type" target="fact_lifecycle"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="dim_mode" value="&lt;b&gt;DimMode&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; ModeKey&lt;br&gt;&lt;b&gt;NK&lt;/b&gt; ModeCode&lt;br&gt;ModeName&lt;br&gt;RailBusFerryGroup&lt;br&gt;RailFlag&lt;br&gt;FixedRouteFlag&lt;br&gt;&lt;br&gt;&lt;i&gt;Examples: HR, CR, LR, MB, DR&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="170" y="680" width="250" height="190" as="geometry"/>
-        </mxCell>
+        <mxCell id="e_urban_annual" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_urban_area" target="fact_annual"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_urban_monthly" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_urban_area" target="fact_monthly"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_urban_safety" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_urban_area" target="fact_safety"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_urban_lifecycle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_urban_area" target="fact_lifecycle"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="dim_service_type" value="&lt;b&gt;DimServiceType&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; ServiceTypeKey&lt;br&gt;&lt;b&gt;NK&lt;/b&gt; TOSCode&lt;br&gt;ServiceTypeName&lt;br&gt;CommitmentType&lt;br&gt;ServiceCategory&lt;br&gt;&lt;br&gt;&lt;i&gt;Examples: DO, PT&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="170" y="910" width="250" height="170" as="geometry"/>
-        </mxCell>
+        <mxCell id="e_status_annual" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_status" target="fact_annual"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_status_availability" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_status" target="fact_availability"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_status_lifecycle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_service_status" target="fact_lifecycle"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="dim_uza" value="&lt;b&gt;DimUrbanArea&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; UrbanAreaKey&lt;br&gt;&lt;b&gt;NK&lt;/b&gt; UACECode&lt;br&gt;UZAName&lt;br&gt;UZASqMiles&lt;br&gt;UZAPopulation&lt;br&gt;UZADensity&lt;br&gt;ServiceAreaSqMiles&lt;br&gt;ServiceAreaPopulation&lt;br&gt;Region&lt;br&gt;TribalAreaName" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="120" width="250" height="230" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="dim_org" value="&lt;b&gt;DimOrganizationType&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; OrganizationTypeKey&lt;br&gt;ReporterType&lt;br&gt;ReportingModule&lt;br&gt;OrganizationType&lt;br&gt;PublicSponsor&lt;br&gt;SubrecipientType&lt;br&gt;TAMTier&lt;br&gt;&lt;br&gt;&lt;i&gt;Mini-dimension for agency classification&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="390" width="250" height="220" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="dim_status" value="&lt;b&gt;DimServiceStatus&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; ServiceStatusKey&lt;br&gt;AgencyStatus&lt;br&gt;ModeStatus&lt;br&gt;SeasonalSegmentFlag&lt;br&gt;FixedGuidewayFlag&lt;br&gt;ServiceActiveFlag&lt;br&gt;&lt;br&gt;&lt;i&gt;Useful for availability and lifecycle filtering&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="650" width="250" height="210" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="dim_lifecycle" value="&lt;b&gt;DimLifecycleStage&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;PK&lt;/b&gt; LifecycleStageKey&lt;br&gt;LifecycleStageName&lt;br&gt;StageOrder&lt;br&gt;StageDefinition&lt;br&gt;ThresholdRule&lt;br&gt;&lt;br&gt;&lt;i&gt;Examples: Start, Growth, Peak, Decline&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;spacing=10;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="900" width="250" height="180" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="legend" value="Blue = core conformed dimensions&lt;br&gt;Purple = helper / mini dimensions&lt;br&gt;Yellow = fact tables&lt;br&gt;Dashed frame = fact layer&lt;br&gt;One connector per dimension keeps the diagram readable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;fontSize=11;align=left;spacing=8;verticalAlign=top;" vertex="1" parent="1">
-          <mxGeometry x="690" y="970" width="440" height="90" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="e_date_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#6c8ebf;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_date" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="610" y="235" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_agency_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#6c8ebf;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_agency" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="610" y="510" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_mode_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#6c8ebf;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_mode" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="610" y="775" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_tos_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#6c8ebf;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_service_type" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="610" y="995" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="e_uza_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_uza" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1220" y="235" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_org_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_org" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1220" y="500" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_status_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_status" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1220" y="755" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_lifecycle_fact_layer" style="endArrow=block;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="dim_lifecycle" target="fact_zone">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1220" y="990" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-
+        <mxCell id="e_event_type_safety" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6b7280;endArrow=none;" edge="1" parent="1" source="dim_safety_event_type" target="fact_safety"><mxGeometry relative="1" as="geometry" /></mxCell>
       </root>
     </mxGraphModel>
   </diagram>
