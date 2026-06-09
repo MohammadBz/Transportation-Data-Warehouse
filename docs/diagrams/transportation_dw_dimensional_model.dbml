@@ -115,9 +115,21 @@ Table Fact_Major_Safety_Event {
   ServiceTypeKey int
   UrbanAreaKey int
   SafetyEventTypeKey int [not null]
+  SourceEventID varchar
+  EventTime time
+  EventDescription text
   EventCount int
-  FatalityCount int
-  InjuryCount int
+  PassengerFatalityCount int
+  EmployeeFatalityCount int
+  OtherFatalityCount int
+  TotalFatalityCount int
+  PassengerInjuryCount int
+  EmployeeInjuryCount int
+  OtherInjuryCount int
+  TotalInjuryCount int
+  VehicleInvolvedCount int
+  EvacuationCount int
+  PropertyDamageAmount decimal
 }
 
 Table Fact_Service_Availability {
@@ -143,10 +155,25 @@ Table Fact_Service_Lifecycle_Accumulating {
   PeakRidershipDateKey int
   LatestObservedDateKey int
   EndServiceDateKey int
+  DaysCommitmentToStart int
+  MonthsStartToFirstObserved int
   MonthsInService int
   MonthsStartToPeak int
   PeakMonthlyUPT bigint
+  PeakMonthlyVRM bigint
+  PeakMonthlyVRH bigint
+  PeakMonthlyVOMS int
   LatestMonthlyUPT bigint
+  LatestMonthlyVRM bigint
+  LatestMonthlyVRH bigint
+  LatestMonthlyVOMS int
+  TotalObservedUPT bigint
+  TotalObservedVRM bigint
+  TotalObservedVRH bigint
+  TotalObservedMajorSafetyEvents int
+  TotalObservedFatalities int
+  TotalObservedInjuries int
+  LifecycleCompleteFlag boolean
 }
 
 Ref: Fact_Annual_Service_Performance.DateKey > DimDate.DateKey
