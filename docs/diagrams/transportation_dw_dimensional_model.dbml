@@ -5,31 +5,67 @@ Project Transportation_Data_Warehouse {
 Table DimDate {
   DateKey int [pk]
   FullDate date
+
+  DayLongName varchar
+  DayShortName varchar
+
+  MonthLongName varchar
+  MonthShortName varchar
+
+  CalendarDay int
+  CalendarDayInWeek int
+
+  CalendarWeek int
+  CalendarWeekStartDateId int
+  CalendarWeekEndDateId int
+
   CalendarMonth int
+  CalendarMonthStartDateId int
+  CalendarMonthEndDateId int
+  CalendarNumberOfDaysInMonth int
+  CalendarDayInMonth int
+
   CalendarQuarter int
+  CalendarQuarterStartDateId int
+  CalendarQuarterEndDateId int
+  CalendarNumberOfDaysInQuarter int
+  CalendarDayInQuarter int
+
   CalendarYear int
-  MonthName varchar
+  CalendarYearStartDateId int
+  CalendarYearEndDateId int
+  CalendarNumberOfDaysInYear int
 }
 
 Table DimAgency {
   AgencyKey int [pk]
+
   NTD_ID varchar
   LegacyNTD_ID varchar
+
   AgencyName varchar
   OrganizationType varchar
+
   City varchar
   State varchar
   Region varchar
+
+  EffectiveDate date
+  ExpirationDate date
+  CurrentFlag boolean
+  VersionNumber int
 }
 
 Table DimMode {
   ModeKey int [pk]
+
   ModeCode varchar
   ModeName varchar
 }
 
 Table DimServiceType {
   ServiceTypeKey int [pk]
+
   TOSCode varchar
   ServiceTypeName varchar
   ServiceCategory varchar
@@ -37,48 +73,58 @@ Table DimServiceType {
 
 Table DimUrbanArea {
   UrbanAreaKey int [pk]
+
   UACECode varchar
   UZAName varchar
+
   UZASqMiles decimal
   UZAPopulation int
   UZADensity decimal
+
   ServiceAreaSqMiles decimal
   ServiceAreaPopulation int
-}
 
-Table DimServiceStatus {
-  ServiceStatusKey int [pk]
-  ServiceStatus varchar
-  AgencyStatus varchar
-  ModeStatus varchar
-  SeasonalSegmentFlag boolean
-  FixedGuidewayFlag boolean
-  ServiceActiveFlag boolean
+  EffectiveDate date
+  ExpirationDate date
+  CurrentFlag boolean
+  VersionNumber int
 }
 
 Table DimSafetyEventType {
   SafetyEventTypeKey int [pk]
+
   EventCategory varchar
   EventType varchar
   EventSubType varchar
   SeverityLevel varchar
 }
 
+Table DimSafetyEvent {
+  SafetyEventKey int [pk]
+
+  SourceEventID varchar
+  EventDescription text
+}
+
 Table Fact_Annual_Service_Performance {
   AnnualServicePerformanceKey bigint [pk]
+
   DateKey int [not null]
   AgencyKey int [not null]
   ModeKey int [not null]
   ServiceTypeKey int [not null]
   UrbanAreaKey int
-  ServiceStatusKey int
+
   UPT bigint
   PMT bigint
+
   VRM bigint
   VRH bigint
   VOMS int
   DRM bigint
+
   Fares decimal
+
   OperatingExpenseTotal decimal
   OperatingExpenseVO decimal
   OperatingExpenseVM decimal
@@ -86,85 +132,86 @@ Table Fact_Annual_Service_Performance {
   OperatingExpenseGA decimal
 }
 
-Table Fact_Monthly_Service_Performance {
-  MonthlyServicePerformanceKey bigint [pk]
-  DateKey int [not null]
-  AgencyKey int [not null]
-  ModeKey int [not null]
-  ServiceTypeKey int [not null]
-  UrbanAreaKey int
-  VOMS int
-  VehicleRevenueMiles bigint
-  VehicleRevenueHours bigint
-  UnlinkedPassengerTrips bigint
-}
-
 Table Fact_Major_Safety_Event {
   MajorSafetyEventKey bigint [pk]
+
   EventDateKey int [not null]
   AgencyKey int [not null]
+
   ModeKey int
   ServiceTypeKey int
   UrbanAreaKey int
+
   SafetyEventTypeKey int [not null]
-  SourceEventID varchar
+  SafetyEventKey int
+
   EventTime time
-  EventDescription text
+
   EventCount int
+
   PassengerFatalityCount int
   EmployeeFatalityCount int
   OtherFatalityCount int
   TotalFatalityCount int
+
   PassengerInjuryCount int
   EmployeeInjuryCount int
   OtherInjuryCount int
   TotalInjuryCount int
+
   VehicleInvolvedCount int
   EvacuationCount int
+
   PropertyDamageAmount decimal
 }
 
 Table Fact_Service_Availability {
   ServiceAvailabilityKey bigint [pk]
+
   AgencyKey int [not null]
   ModeKey int [not null]
   ServiceTypeKey int [not null]
+
   StartDateKey int
   EndDateKey int
-  ServiceStatusKey int [not null]
+
+  ServiceActiveFlag boolean
 }
 
 Table Fact_Service_Lifecycle_Accumulating {
   ServiceLifecycleKey bigint [pk]
+
   AgencyKey int [not null]
   ModeKey int [not null]
   ServiceTypeKey int [not null]
+
   UrbanAreaKey int
-  ServiceStatusKey int
-  CommitmentDateKey int
-  StartServiceDateKey int
+
   FirstObservedDateKey int
-  PeakRidershipDateKey int
+  PeakPerformanceDateKey int
   LatestObservedDateKey int
   EndServiceDateKey int
-  DaysCommitmentToStart int
-  MonthsStartToFirstObserved int
-  MonthsInService int
-  MonthsStartToPeak int
-  PeakMonthlyUPT bigint
-  PeakMonthlyVRM bigint
-  PeakMonthlyVRH bigint
-  PeakMonthlyVOMS int
-  LatestMonthlyUPT bigint
-  LatestMonthlyVRM bigint
-  LatestMonthlyVRH bigint
-  LatestMonthlyVOMS int
+
+  YearsInService int
+
+  PeakAnnualUPT bigint
+  PeakAnnualVRM bigint
+  PeakAnnualVRH bigint
+  PeakAnnualVOMS int
+
+  LatestAnnualUPT bigint
+  LatestAnnualVRM bigint
+  LatestAnnualVRH bigint
+  LatestAnnualVOMS int
+
   TotalObservedUPT bigint
   TotalObservedVRM bigint
   TotalObservedVRH bigint
+
   TotalObservedMajorSafetyEvents int
   TotalObservedFatalities int
   TotalObservedInjuries int
+
   LifecycleCompleteFlag boolean
 }
 
@@ -173,13 +220,6 @@ Ref: Fact_Annual_Service_Performance.AgencyKey > DimAgency.AgencyKey
 Ref: Fact_Annual_Service_Performance.ModeKey > DimMode.ModeKey
 Ref: Fact_Annual_Service_Performance.ServiceTypeKey > DimServiceType.ServiceTypeKey
 Ref: Fact_Annual_Service_Performance.UrbanAreaKey > DimUrbanArea.UrbanAreaKey
-Ref: Fact_Annual_Service_Performance.ServiceStatusKey > DimServiceStatus.ServiceStatusKey
-
-Ref: Fact_Monthly_Service_Performance.DateKey > DimDate.DateKey
-Ref: Fact_Monthly_Service_Performance.AgencyKey > DimAgency.AgencyKey
-Ref: Fact_Monthly_Service_Performance.ModeKey > DimMode.ModeKey
-Ref: Fact_Monthly_Service_Performance.ServiceTypeKey > DimServiceType.ServiceTypeKey
-Ref: Fact_Monthly_Service_Performance.UrbanAreaKey > DimUrbanArea.UrbanAreaKey
 
 Ref: Fact_Major_Safety_Event.EventDateKey > DimDate.DateKey
 Ref: Fact_Major_Safety_Event.AgencyKey > DimAgency.AgencyKey
@@ -187,22 +227,20 @@ Ref: Fact_Major_Safety_Event.ModeKey > DimMode.ModeKey
 Ref: Fact_Major_Safety_Event.ServiceTypeKey > DimServiceType.ServiceTypeKey
 Ref: Fact_Major_Safety_Event.UrbanAreaKey > DimUrbanArea.UrbanAreaKey
 Ref: Fact_Major_Safety_Event.SafetyEventTypeKey > DimSafetyEventType.SafetyEventTypeKey
+Ref: Fact_Major_Safety_Event.SafetyEventKey > DimSafetyEvent.SafetyEventKey
 
 Ref: Fact_Service_Availability.AgencyKey > DimAgency.AgencyKey
 Ref: Fact_Service_Availability.ModeKey > DimMode.ModeKey
 Ref: Fact_Service_Availability.ServiceTypeKey > DimServiceType.ServiceTypeKey
 Ref: Fact_Service_Availability.StartDateKey > DimDate.DateKey
 Ref: Fact_Service_Availability.EndDateKey > DimDate.DateKey
-Ref: Fact_Service_Availability.ServiceStatusKey > DimServiceStatus.ServiceStatusKey
 
 Ref: Fact_Service_Lifecycle_Accumulating.AgencyKey > DimAgency.AgencyKey
 Ref: Fact_Service_Lifecycle_Accumulating.ModeKey > DimMode.ModeKey
 Ref: Fact_Service_Lifecycle_Accumulating.ServiceTypeKey > DimServiceType.ServiceTypeKey
 Ref: Fact_Service_Lifecycle_Accumulating.UrbanAreaKey > DimUrbanArea.UrbanAreaKey
-Ref: Fact_Service_Lifecycle_Accumulating.ServiceStatusKey > DimServiceStatus.ServiceStatusKey
-Ref: Fact_Service_Lifecycle_Accumulating.CommitmentDateKey > DimDate.DateKey
-Ref: Fact_Service_Lifecycle_Accumulating.StartServiceDateKey > DimDate.DateKey
+
 Ref: Fact_Service_Lifecycle_Accumulating.FirstObservedDateKey > DimDate.DateKey
-Ref: Fact_Service_Lifecycle_Accumulating.PeakRidershipDateKey > DimDate.DateKey
+Ref: Fact_Service_Lifecycle_Accumulating.PeakPerformanceDateKey > DimDate.DateKey
 Ref: Fact_Service_Lifecycle_Accumulating.LatestObservedDateKey > DimDate.DateKey
 Ref: Fact_Service_Lifecycle_Accumulating.EndServiceDateKey > DimDate.DateKey
