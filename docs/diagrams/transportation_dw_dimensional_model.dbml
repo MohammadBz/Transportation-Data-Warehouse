@@ -16,12 +16,7 @@ Table DimAgency {
   NTD_ID varchar
   LegacyNTD_ID varchar
   AgencyName varchar
-  ReporterType varchar
-  ReportingModule varchar
   OrganizationType varchar
-  PublicSponsor varchar
-  SubrecipientType varchar
-  TAMTier varchar
   City varchar
   State varchar
   Region varchar
@@ -31,9 +26,6 @@ Table DimMode {
   ModeKey int [pk]
   ModeCode varchar
   ModeName varchar
-  RailBusFerryGroup varchar
-  RailFlag boolean
-  FixedRouteFlag boolean
 }
 
 Table DimServiceType {
