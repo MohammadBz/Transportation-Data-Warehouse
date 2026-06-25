@@ -53,7 +53,6 @@ Table DimAgency {
   EffectiveDate date
   ExpirationDate date
   CurrentFlag boolean
-  VersionNumber int
 }
 
 Table DimMode {
@@ -87,7 +86,6 @@ Table DimUrbanArea {
   EffectiveDate date
   ExpirationDate date
   CurrentFlag boolean
-  VersionNumber int
 }
 
 Table DimSafetyEventType {
