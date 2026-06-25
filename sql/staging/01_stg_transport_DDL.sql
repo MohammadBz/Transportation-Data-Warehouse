@@ -72,7 +72,7 @@ CREATE TABLE stg_transport.stg_agency_mode_service (
     reporting_module VARCHAR(50),
 
     mode VARCHAR(20),
-    tos VARCHAR(20),
+    type_of_service_code VARCHAR(20),
 
     voms NUMERIC(18,2),
     vams NUMERIC(18,2),
@@ -89,7 +89,7 @@ CREATE TABLE stg_transport.stg_agency_mode_service (
     end_service_date DATE
 );
 
-CREATE TABLE stg_transport.stg_ts21_fares (
+CREATE TABLE stg_transport.stg_ts21_drm (
     last_report_year INTEGER,
     ntd_id VARCHAR(50),
     agency_name VARCHAR(255),
@@ -122,7 +122,7 @@ CREATE TABLE stg_transport.stg_ts21_fares (
     y2023 NUMERIC(18,2),
     y2024 NUMERIC(18,2)
 );
-CREATE TABLE stg_transport.stg_ts21_drm (
+CREATE TABLE stg_transport.stg_ts21_fares (
     last_report_year INTEGER,
     ntd_id VARCHAR(50),
     agency_name VARCHAR(255),
@@ -400,7 +400,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_drm (
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 CREATE TABLE stg_transport.stg_ts21_archive_upt (
     ntd_id VARCHAR(50),
@@ -449,7 +449,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_upt (
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 CREATE TABLE stg_transport.stg_ts21_archive_pmt (
     ntd_id VARCHAR(50),
@@ -498,7 +498,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_pmt (
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 CREATE TABLE stg_transport.stg_ts21_archive_vrm (
     ntd_id VARCHAR(50),
@@ -547,7 +547,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_vrm (
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 CREATE TABLE stg_transport.stg_ts21_archive_vrh(
     ntd_id VARCHAR(50),
@@ -596,7 +596,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_vrh(
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 CREATE TABLE stg_transport.stg_ts21_archive_voms (
     ntd_id VARCHAR(50),
@@ -645,7 +645,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_voms (
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 
 CREATE TABLE stg_transport.stg_ts21_archive_fares (
@@ -695,7 +695,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_fares (
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 CREATE TABLE stg_transport.stg_ts21_archive_opexp_total(
     ntd_id VARCHAR(50),
@@ -744,7 +744,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_opexp_total(
     y2011 NUMERIC(18,2),
     y2012 NUMERIC(18,2),
     y2013 NUMERIC(18,2),
-    y2014 NUMERIC(18,2),
+    y2014 NUMERIC(18,2)
 );
 
 CREATE TABLE stg_transport.stg_major_safety_event (
@@ -756,10 +756,11 @@ CREATE TABLE stg_transport.stg_major_safety_event (
     primary_uza_uace_code VARCHAR(50),
 
     mode VARCHAR(20),
-    tos VARCHAR(20),
+    type_of_service_code VARCHAR(20),
 
     event_date DATE,
     event_time TIME,
+    year INTEGER,
 
     event_category VARCHAR(100),
     event_type VARCHAR(200),
@@ -767,14 +768,52 @@ CREATE TABLE stg_transport.stg_major_safety_event (
 
     safety_security VARCHAR(20),
 
-    event_description TEXT,
+    event_description VARCHAR(MAX),
 
     total_injuries INTEGER,
     total_fatalities INTEGER,
 
     number_of_transit_vehicles_involved INTEGER,
 
-    evacuation BOOLEAN,
+    evacuation BIT,
 
     property_damage VARCHAR(100)
+);
+CREATE TABLE stg_transport.stg_dim_date (
+    date_key INTEGER,
+    full_date DATE,
+
+    day_long_name VARCHAR(20),
+    day_short_name VARCHAR(10),
+
+    month_long_name VARCHAR(20),
+    month_short_name VARCHAR(10),
+
+    calendar_day INTEGER,
+    calendar_week INTEGER,
+
+    calendar_week_start_date_id INTEGER,
+    calendar_week_end_date_id INTEGER,
+
+    calendar_day_in_week INTEGER,
+
+    calendar_month INTEGER,
+    calendar_month_start_date_id INTEGER,
+    calendar_month_end_date_id INTEGER,
+
+    calendar_number_of_days_in_month INTEGER,
+    calendar_day_in_month INTEGER,
+
+    calendar_quarter INTEGER,
+    calendar_quarter_start_date_id INTEGER,
+    calendar_quarter_end_date_id INTEGER,
+
+    calendar_number_of_days_in_quarter INTEGER,
+    calendar_day_in_quarter INTEGER,
+
+    calendar_year INTEGER,
+    calendar_year_start_date_id INTEGER,
+    calendar_year_end_date_id INTEGER,
+
+    calendar_number_of_days_in_year INTEGER
 );
