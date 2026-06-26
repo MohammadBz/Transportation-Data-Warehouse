@@ -1314,3 +1314,63 @@ SELECT
 
 FROM raw_transport.raw_archive_1991_2014_ts2_1_service_data_and_operating_expenses_time_series_by_mode_opexp_total;
 
+INSERT INTO stg_transport.stg_major_safety_event (
+    incident_number,
+    ntd_id,
+    agency_name,
+    primary_uza_uace_code,
+    mode,
+    type_of_service_code,
+    event_date,
+    event_time,
+    year,
+    event_category,
+    event_type,
+    event_type_group,
+    safety_security,
+    event_description,
+    total_injuries,
+    total_fatalities,
+    number_of_transit_vehicles_involved,
+    evacuation,
+    property_damage
+)
+SELECT
+    TRY_CAST([Incident Number] AS BIGINT),
+
+    LEFT(NULLIF(TRIM([NTD ID]), ''), 50),
+    LEFT(NULLIF(TRIM([Agency]), ''), 255),
+
+    LEFT(NULLIF(TRIM([Primary UZA UACE Code]), ''), 50),
+
+    LEFT(NULLIF(TRIM([Mode]), ''), 20),
+    LEFT(NULLIF(TRIM([TOS]), ''), 20),
+
+    TRY_PARSE([Event Date] AS DATE USING 'en-US'),
+
+    TRY_CAST([Event Time] AS TIME),
+
+    TRY_CAST([Year] AS INT),
+
+    LEFT(NULLIF(TRIM([Event Category]), ''), 100),
+    LEFT(NULLIF(TRIM([Event Type]), ''), 200),
+    LEFT(NULLIF(TRIM([Event Type Group]), ''), 100),
+
+    LEFT(NULLIF(TRIM([Safety/Security]), ''), 20),
+
+    [Event Description],
+
+    TRY_CAST([Total Injuries] AS INT),
+    TRY_CAST([Total Fatalities] AS INT),
+
+    TRY_CAST([Number of Transit Vehicles Involved] AS INT),
+
+    CASE
+        WHEN LOWER(TRIM([Evacuation])) = 'true' THEN 1
+        WHEN LOWER(TRIM([Evacuation])) = 'false' THEN 0
+        ELSE NULL
+    END,
+
+    LEFT(NULLIF(TRIM([Property Damage]), ''), 100)
+
+FROM raw_transport.raw_major_safety_and_security_events_20260607;
