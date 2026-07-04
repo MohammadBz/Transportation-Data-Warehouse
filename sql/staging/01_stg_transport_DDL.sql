@@ -770,14 +770,23 @@ CREATE TABLE stg_transport.stg_major_safety_event (
 
     event_description VARCHAR(MAX),
 
-    total_injuries INTEGER,
-    total_fatalities INTEGER,
+    -- Fatality counts: 3-way split (Passenger/Employee/Other) + authoritative Total
+    passenger_fatality_count   INTEGER,
+    employee_fatality_count    INTEGER,
+    other_fatality_count       INTEGER,
+    total_fatality_count       INTEGER,
+
+    -- Injury counts: 3-way split (Passenger/Employee/Other) + authoritative Total
+    passenger_injury_count     INTEGER,
+    employee_injury_count      INTEGER,
+    other_injury_count         INTEGER,
+    total_injury_count         INTEGER,
 
     number_of_transit_vehicles_involved INTEGER,
 
     evacuation BIT,
 
-    property_damage VARCHAR(100)
+    property_damage_amount NUMERIC(18,2)
 );
 CREATE TABLE stg_transport.stg_dim_date (
     date_key INTEGER,
