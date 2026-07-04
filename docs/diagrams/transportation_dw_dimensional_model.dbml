@@ -1,5 +1,5 @@
 Project Transportation_Data_Warehouse {
-  database_type: "PostgreSQL"
+  database_type: "SQL Server"
 }
 
 Table DimDate {
@@ -124,10 +124,6 @@ Table Fact_Annual_Service_Performance {
   Fares decimal
 
   OperatingExpenseTotal decimal
-  OperatingExpenseVO decimal
-  OperatingExpenseVM decimal
-  OperatingExpenseNVM decimal
-  OperatingExpenseGA decimal
 }
 
 Table Fact_Major_Safety_Event {
