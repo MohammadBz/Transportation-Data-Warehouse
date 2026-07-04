@@ -1,7 +1,26 @@
-TRUNCATE TABLE stg_transport.stg_agency_information;
-
+-- ============================================================
 -- Clean out staging for a fresh load (Truncate and Load pattern)
+-- ============================================================
 TRUNCATE TABLE stg_transport.stg_agency_information;
+TRUNCATE TABLE stg_transport.stg_agency_mode_service;
+TRUNCATE TABLE stg_transport.stg_ts21_drm;
+TRUNCATE TABLE stg_transport.stg_ts21_fares;
+TRUNCATE TABLE stg_transport.stg_ts21_opexp_total;
+TRUNCATE TABLE stg_transport.stg_ts21_upt;
+TRUNCATE TABLE stg_transport.stg_ts21_pmt;
+TRUNCATE TABLE stg_transport.stg_ts21_vrm;
+TRUNCATE TABLE stg_transport.stg_ts21_vrh;
+TRUNCATE TABLE stg_transport.stg_ts21_voms;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_drm;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_upt;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_pmt;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_vrm;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_vrh;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_voms;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_fares;
+TRUNCATE TABLE stg_transport.stg_ts21_archive_opexp_total;
+TRUNCATE TABLE stg_transport.stg_major_safety_event;
+TRUNCATE TABLE stg_transport.stg_dim_date;
 
 INSERT INTO stg_transport.stg_agency_information (
     state_parent_ntd_id,
@@ -123,9 +142,6 @@ SELECT
     TRY_CAST(NULLIF(TRIM([State Admin Funds Expended]), 'None') AS NUMERIC(18,2))
 
 FROM raw_transport.[raw_2024_agency_information_250922];
-
--- Clean out staging for a fresh load
-TRUNCATE TABLE stg_transport.stg_agency_mode_service;
 
 INSERT INTO stg_transport.stg_agency_mode_service (
     state_parent_ntd_id,
@@ -1329,11 +1345,17 @@ INSERT INTO stg_transport.stg_major_safety_event (
     event_type_group,
     safety_security,
     event_description,
-    total_injuries,
-    total_fatalities,
+    passenger_fatality_count,
+    employee_fatality_count,
+    other_fatality_count,
+    total_fatality_count,
+    passenger_injury_count,
+    employee_injury_count,
+    other_injury_count,
+    total_injury_count,
     number_of_transit_vehicles_involved,
     evacuation,
-    property_damage
+    property_damage_amount
 )
 SELECT
     TRY_CAST([Incident Number] AS BIGINT),
@@ -1360,8 +1382,21 @@ SELECT
 
     [Event Description],
 
-    TRY_CAST([Total Injuries] AS INT),
-    TRY_CAST([Total Fatalities] AS INT),
+    -- ===== Fatalities: 3-way split + authoritative total =====
+    -- Passenger  = Transit Vehicle Riders + People Waiting/Leaving
+    -- Employee   = Operators + Non-Operator Employees + Other Workers
+    -- Other      = Total - Passenger - Employee (clamped >= 0, since source
+    --              component columns can over-count vs the reported total)
+    fat.passenger_fatality_count,
+    fat.employee_fatality_count,
+    fat.other_fatality_count,
+    fat.total_fatality_count,
+
+    -- ===== Injuries: same 3-way split logic =====
+    inj.passenger_injury_count,
+    inj.employee_injury_count,
+    inj.other_injury_count,
+    inj.total_injury_count,
 
     TRY_CAST([Number of Transit Vehicles Involved] AS INT),
 
@@ -1371,6 +1406,66 @@ SELECT
         ELSE NULL
     END,
 
-    LEFT(NULLIF(TRIM([Property Damage]), ''), 100)
+    -- Property Damage is numeric-with-commas in the source (e.g. '1,000'),
+    -- so strip the thousands separators before casting to a decimal amount.
+    TRY_CAST(REPLACE([Property Damage], ',', '') AS NUMERIC(18,2))
 
-FROM raw_transport.raw_major_safety_and_security_events_20260607;
+FROM raw_transport.raw_major_safety_and_security_events_20260607
+
+-- ------------------------------------------------------------
+-- Fatality bucketing
+-- ------------------------------------------------------------
+CROSS APPLY (
+    SELECT
+        -- Passenger fatalities
+        ISNULL(TRY_CAST([Transit Vehicle Rider Fatalities] AS INT), 0)
+        + ISNULL(TRY_CAST([People Waiting or Leaving Fatalities] AS INT), 0)
+            AS passenger_fatality_count,
+        -- Employee fatalities
+        ISNULL(TRY_CAST([Transit Vehicle Operator Fatalities] AS INT), 0)
+        + ISNULL(TRY_CAST([Non-Operator Transit Employee Fatalities] AS INT), 0)
+        + ISNULL(TRY_CAST([Other Worker Fatalities] AS INT), 0)
+            AS employee_fatality_count,
+        -- Authoritative total
+        TRY_CAST([Total Fatalities] AS INT) AS total_fatality_count
+) fat
+CROSS APPLY (
+    -- Other = Total - Passenger - Employee, clamped to a minimum of 0
+    -- (the source's granular pedestrian/suicide/trespasser columns sometimes
+    --  sum to more than Total, so Other is derived rather than summed directly)
+    SELECT
+        CASE
+            WHEN fat.total_fatality_count IS NULL THEN NULL
+            WHEN fat.total_fatality_count - fat.passenger_fatality_count
+                                       - fat.employee_fatality_count < 0
+                THEN 0
+            ELSE fat.total_fatality_count - fat.passenger_fatality_count
+                                        - fat.employee_fatality_count
+        END AS other_fatality_count
+) fat_other
+
+-- ------------------------------------------------------------
+-- Injury bucketing (same logic as fatalities)
+-- ------------------------------------------------------------
+CROSS APPLY (
+    SELECT
+        ISNULL(TRY_CAST([Transit Vehicle Rider Injuries] AS INT), 0)
+        + ISNULL(TRY_CAST([People Waiting or Leaving Injuries] AS INT), 0)
+            AS passenger_injury_count,
+        ISNULL(TRY_CAST([Transit Vehicle Operator Injuries] AS INT), 0)
+        + ISNULL(TRY_CAST([Non-Operator Transit Employee Injuries] AS INT), 0)
+        + ISNULL(TRY_CAST([Other Worker Injuries] AS INT), 0)
+            AS employee_injury_count,
+        TRY_CAST([Total Injuries] AS INT) AS total_injury_count
+) inj
+CROSS APPLY (
+    SELECT
+        CASE
+            WHEN inj.total_injury_count IS NULL THEN NULL
+            WHEN inj.total_injury_count - inj.passenger_injury_count
+                                      - inj.employee_injury_count < 0
+                THEN 0
+            ELSE inj.total_injury_count - inj.passenger_injury_count
+                                       - inj.employee_injury_count
+        END AS other_injury_count
+) inj_other;
