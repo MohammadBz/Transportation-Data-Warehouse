@@ -1,6 +1,6 @@
 CREATE TABLE stg_transport.stg_agency_information (
     state_parent_ntd_id VARCHAR(50),
-    ntd_id VARCHAR(50),
+    ntd_id VARCHAR(50) NOT NULL,
     legacy_ntd_id VARCHAR(50),
     agency_name VARCHAR(255),
     division_department VARCHAR(255),
@@ -58,7 +58,10 @@ CREATE TABLE stg_transport.stg_agency_information (
     number_of_state_counties NUMERIC(18,2),
     number_of_counties_with_service NUMERIC(18,2),
 
-    state_admin_funds_expended NUMERIC(18,2)
+    state_admin_funds_expended NUMERIC(18,2),
+
+    -- Unique constraint enforces no duplicate NTD_IDs at source
+    CONSTRAINT UQ_stg_agency_information_ntd_id UNIQUE (ntd_id)
 );
 
 CREATE TABLE stg_transport.stg_agency_mode_service (
@@ -748,7 +751,7 @@ CREATE TABLE stg_transport.stg_ts21_archive_opexp_total(
 );
 
 CREATE TABLE stg_transport.stg_major_safety_event (
-    incident_number BIGINT,
+    incident_number BIGINT NOT NULL,
 
     ntd_id VARCHAR(50),
     agency_name VARCHAR(255),
@@ -786,7 +789,10 @@ CREATE TABLE stg_transport.stg_major_safety_event (
 
     evacuation BIT,
 
-    property_damage_amount NUMERIC(18,2)
+    property_damage_amount NUMERIC(18,2),
+
+    -- Unique constraint enforces no duplicate incident numbers at source
+    CONSTRAINT UQ_stg_major_safety_event_incident_number UNIQUE (incident_number)
 );
 CREATE TABLE stg_transport.stg_dim_date (
     date_key INTEGER,
