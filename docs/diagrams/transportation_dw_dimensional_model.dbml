@@ -48,7 +48,11 @@ Table DimAgency {
 
   City varchar
   State varchar
-  Region varchar
+  Region int
+
+  // Agency-reported service footprint (sourced from NTD agency info file)
+  ServiceAreaSqMiles decimal
+  ServiceAreaPopulation int
 
   EffectiveDate date
   ExpirationDate date
@@ -76,12 +80,10 @@ Table DimUrbanArea {
   UACECode varchar
   UZAName varchar
 
+  // Census-defined geographic attributes only
   UZASqMiles decimal
   UZAPopulation int
   UZADensity decimal
-
-  ServiceAreaSqMiles decimal
-  ServiceAreaPopulation int
 
   EffectiveDate date
   ExpirationDate date
@@ -97,11 +99,11 @@ Table DimSafetyEventType {
   SeverityLevel varchar
 }
 
-Table DimSafetyEvent {
-  SafetyEventKey int [pk]
+Table DimSafetyIncident {
+  SafetyIncidentKey int [pk]
 
   SourceEventID varchar
-  EventDescription text
+  EventDescription varchar
 }
 
 Table Fact_Annual_Service_Performance {
@@ -137,7 +139,7 @@ Table Fact_Major_Safety_Event {
   UrbanAreaKey int
 
   SafetyEventTypeKey int [not null]
-  SafetyEventKey int
+  SafetyIncidentKey int
 
   EventTime time
 
@@ -221,7 +223,7 @@ Ref: Fact_Major_Safety_Event.ModeKey > DimMode.ModeKey
 Ref: Fact_Major_Safety_Event.ServiceTypeKey > DimServiceType.ServiceTypeKey
 Ref: Fact_Major_Safety_Event.UrbanAreaKey > DimUrbanArea.UrbanAreaKey
 Ref: Fact_Major_Safety_Event.SafetyEventTypeKey > DimSafetyEventType.SafetyEventTypeKey
-Ref: Fact_Major_Safety_Event.SafetyEventKey > DimSafetyEvent.SafetyEventKey
+Ref: Fact_Major_Safety_Event.SafetyIncidentKey > DimSafetyIncident.SafetyIncidentKey
 
 Ref: Fact_Service_Availability.AgencyKey > DimAgency.AgencyKey
 Ref: Fact_Service_Availability.ModeKey > DimMode.ModeKey
