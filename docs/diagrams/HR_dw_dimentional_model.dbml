@@ -1,0 +1,321 @@
+// ======================================================
+// DIMENSIONS
+// ======================================================
+
+Table DimDate {
+  DateKey int [pk]
+  FullDate date
+
+  DayLongName varchar
+  DayShortName varchar
+
+  MonthLongName varchar
+  MonthShortName varchar
+
+  CalendarDay int
+  CalendarDayInWeek int
+
+  CalendarWeek int
+  CalendarWeekStartDateId int
+  CalendarWeekEndDateId int
+
+  CalendarMonth int
+  CalendarMonthStartDateId int
+  CalendarMonthEndDateId int
+  CalendarNumberOfDaysInMonth int
+  CalendarDayInMonth int
+
+  CalendarQuarter int
+  CalendarQuarterStartDateId int
+  CalendarQuarterEndDateId int
+  CalendarNumberOfDaysInQuarter int
+  CalendarDayInQuarter int
+
+  CalendarYear int
+  CalendarYearStartDateId int
+  CalendarYearEndDateId int
+  CalendarNumberOfDaysInYear int
+}
+
+Table DimAgency {
+  AgencyKey int [pk]
+
+  NTD_ID varchar
+  LegacyNTD_ID varchar
+
+  AgencyName varchar
+  OrganizationType varchar
+
+  City varchar
+  State varchar
+  Region int
+
+  // Agency-reported service footprint (sourced from NTD agency info file)
+  ServiceAreaSqMiles decimal
+  ServiceAreaPopulation int
+
+  EffectiveDate date
+  ExpirationDate date
+  CurrentFlag boolean
+}
+
+Table DimMode {
+  ModeKey int [pk]
+
+  ModeCode varchar
+  ModeName varchar
+}
+
+Table DimServiceType {
+  ServiceTypeKey int [pk]
+
+  TOSCode varchar
+  ServiceTypeName varchar
+  ServiceCategory varchar
+}
+
+Table DimEmploymentType {
+  EmploymentTypeKey int [pk]
+
+  EmploymentType varchar
+}
+
+Table DimDepartment {
+  DepartmentKey int [pk]
+
+  NTDLaborObjectClass varchar
+}
+
+Table DimJobRole {
+  JobRoleKey int [pk]
+
+  PositionTitle varchar
+
+  OperatorStatus varchar
+}
+
+Table DimEducation {
+  EducationKey int [pk]
+
+  EducationLevel varchar
+}
+
+// ======================================================
+// FACT 1
+// TRANSACTION FACT
+// JOB POSTING
+// GRAIN:
+// ONE ROW PER OPENINGID
+// ======================================================
+
+Table FactJobPosting {
+
+  JobPostingFactKey int [pk]
+
+  DateKey int
+
+  AgencyKey int
+
+  ModeKey int
+
+  ServiceTypeKey int
+
+  EmploymentTypeKey int
+
+  DepartmentKey int
+
+  JobRoleKey int
+
+  OpeningID varchar
+
+  OpenPositions int
+
+  SalaryMinHourly decimal
+  SalaryMaxHourly decimal
+  SalaryMidHourly decimal
+
+  DaysOpen int
+
+  HiredCount int
+
+  PostingStatus varchar
+
+  VacancyReason varchar
+}
+
+// ======================================================
+// FACT 2
+// PERIODIC SNAPSHOT
+// EMPLOYEE SNAPSHOT
+//
+// GRAIN:
+// ONE ROW PER
+// MONTH × AGENCY × LABOR CATEGORY
+// × EMPLOYMENT TYPE × MODE × SERVICE TYPE
+// ======================================================
+
+Table FactEmployeeSnapshot {
+
+  SnapshotFactKey int [pk]
+
+  DateKey int
+
+  AgencyKey int
+
+  ModeKey int
+
+  ServiceTypeKey int
+
+  EmploymentTypeKey int
+
+  DepartmentKey int
+
+  JobRoleKey int
+
+  EmployeeCount int
+
+  AverageHourlyWage decimal
+
+  TotalHoursWorked decimal
+
+  TotalOvertimeHours decimal
+
+  TotalPaidHours decimal
+}
+
+// ======================================================
+// FACT 3
+// FACTLESS FACT
+//
+// EACH ROW REPRESENTS:
+//
+// AGENCY PROVIDES WORKFORCE
+// FOR A LABOR CATEGORY
+// ======================================================
+
+Table FactAgencyLaborCoverage {
+
+  CoverageFactKey int [pk]
+
+  DateKey int
+
+  AgencyKey int
+
+  DepartmentKey int
+
+  ModeKey int
+
+  ServiceTypeKey int
+
+  EmploymentTypeKey int
+}
+
+// ======================================================
+// FACT 4
+// ACCUMULATING SNAPSHOT
+// JOB POSTING LIFECYCLE
+//
+// GRAIN:
+// ONE ROW PER OPENINGID
+// ======================================================
+
+Table FactJobPostingLifecycle {
+
+  LifecycleFactKey int [pk]
+
+  AgencyKey int
+
+  ModeKey int
+
+  ServiceTypeKey int
+
+  EmploymentTypeKey int
+
+  DepartmentKey int
+
+  JobRoleKey int
+
+  OpeningID varchar
+
+  PostingDateKey int
+
+  FilledDateKey int
+
+  ClosingDateKey int
+
+  DaysOpen int
+
+  HiredCount int
+
+  PostingStatus varchar
+}
+
+// ======================================================
+// RELATIONSHIPS
+// ======================================================
+
+// Job Posting
+
+Ref: FactJobPosting.DateKey > DimDate.DateKey
+
+Ref: FactJobPosting.AgencyKey > DimAgency.AgencyKey
+
+Ref: FactJobPosting.ModeKey > DimMode.ModeKey
+
+Ref: FactJobPosting.ServiceTypeKey > DimServiceType.ServiceTypeKey
+
+Ref: FactJobPosting.EmploymentTypeKey > DimEmploymentType.EmploymentTypeKey
+
+Ref: FactJobPosting.DepartmentKey > DimDepartment.DepartmentKey
+
+Ref: FactJobPosting.JobRoleKey > DimJobRole.JobRoleKey
+
+// Employee Snapshot
+
+Ref: FactEmployeeSnapshot.DateKey > DimDate.DateKey
+
+Ref: FactEmployeeSnapshot.AgencyKey > DimAgency.AgencyKey
+
+Ref: FactEmployeeSnapshot.ModeKey > DimMode.ModeKey
+
+Ref: FactEmployeeSnapshot.ServiceTypeKey > DimServiceType.ServiceTypeKey
+
+Ref: FactEmployeeSnapshot.EmploymentTypeKey > DimEmploymentType.EmploymentTypeKey
+
+Ref: FactEmployeeSnapshot.DepartmentKey > DimDepartment.DepartmentKey
+
+Ref: FactEmployeeSnapshot.JobRoleKey > DimJobRole.JobRoleKey
+
+// Factless Coverage
+
+Ref: FactAgencyLaborCoverage.DateKey > DimDate.DateKey
+
+Ref: FactAgencyLaborCoverage.AgencyKey > DimAgency.AgencyKey
+
+Ref: FactAgencyLaborCoverage.DepartmentKey > DimDepartment.DepartmentKey
+
+Ref: FactAgencyLaborCoverage.ModeKey > DimMode.ModeKey
+
+Ref: FactAgencyLaborCoverage.ServiceTypeKey > DimServiceType.ServiceTypeKey
+
+Ref: FactAgencyLaborCoverage.EmploymentTypeKey > DimEmploymentType.EmploymentTypeKey
+
+// Job Posting Lifecycle
+
+Ref: FactJobPostingLifecycle.AgencyKey > DimAgency.AgencyKey
+
+Ref: FactJobPostingLifecycle.ModeKey > DimMode.ModeKey
+
+Ref: FactJobPostingLifecycle.ServiceTypeKey > DimServiceType.ServiceTypeKey
+
+Ref: FactJobPostingLifecycle.EmploymentTypeKey > DimEmploymentType.EmploymentTypeKey
+
+Ref: FactJobPostingLifecycle.DepartmentKey > DimDepartment.DepartmentKey
+
+Ref: FactJobPostingLifecycle.JobRoleKey > DimJobRole.JobRoleKey
+
+Ref: FactJobPostingLifecycle.PostingDateKey > DimDate.DateKey
+
+Ref: FactJobPostingLifecycle.FilledDateKey > DimDate.DateKey
+
+Ref: FactJobPostingLifecycle.ClosingDateKey > DimDate.DateKey
