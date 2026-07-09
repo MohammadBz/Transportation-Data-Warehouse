@@ -111,9 +111,9 @@ Table Fact_Annual_Service_Performance {
 
   DateKey int [not null]
   AgencyKey int [not null]
-  ModeKey int [not null]
-  ServiceTypeKey int [not null]
-  UrbanAreaKey int
+  ModeKey int [not null, default: -1]
+  ServiceTypeKey int [not null, default: -1]
+  UrbanAreaKey int [not null, default: -1]
 
   UPT bigint
   PMT bigint
@@ -126,6 +126,12 @@ Table Fact_Annual_Service_Performance {
   Fares decimal
 
   OperatingExpenseTotal decimal
+
+  // ETL audit columns
+  ETL_InsertDate datetime [not null]
+  ETL_UpdateDate datetime
+  ETL_BatchID int
+  RecordSourceSystem varchar(50)
 }
 
 Table Fact_Major_Safety_Event {
@@ -134,31 +140,37 @@ Table Fact_Major_Safety_Event {
   EventDateKey int [not null]
   AgencyKey int [not null]
 
-  ModeKey int
-  ServiceTypeKey int
-  UrbanAreaKey int
+  ModeKey int [not null, default: -1]
+  ServiceTypeKey int [not null, default: -1]
+  UrbanAreaKey int [not null, default: -1]
 
   SafetyEventTypeKey int [not null]
-  SafetyIncidentKey int
+  SafetyIncidentDescriptionKey int
 
+  // Degenerate dimensions: natural key and event time
+  SourceIncidentID varchar(50)
   EventTime time
-
-  EventCount int
 
   PassengerFatalityCount int
   EmployeeFatalityCount int
   OtherFatalityCount int
-  TotalFatalityCount int
+  TotalFatalityCount int  // Stored from source, not computed
 
   PassengerInjuryCount int
   EmployeeInjuryCount int
   OtherInjuryCount int
-  TotalInjuryCount int
+  TotalInjuryCount int    // Stored from source, not computed
 
   VehicleInvolvedCount int
   EvacuationCount int
 
   PropertyDamageAmount decimal
+
+  // ETL audit columns
+  ETL_InsertDate datetime [not null]
+  ETL_UpdateDate datetime
+  ETL_BatchID int
+  RecordSourceSystem varchar(50)
 }
 
 Table Fact_Service_Availability {
@@ -168,10 +180,21 @@ Table Fact_Service_Availability {
   ModeKey int [not null]
   ServiceTypeKey int [not null]
 
-  StartDateKey int
-  EndDateKey int
+  // Role-playing dimensions (references to DimDate)
+  // Service lifecycle milestones: Commitment → Start → End
+  CommitmentDateKey int             // When service was committed/planned
+  StartDateKey int [not null]       // When service actually started
+  EndDateKey int [not null]         // When service ended (or max date if ongoing)
 
+  // Stored from source (not computed from today's date)
+  // Values: 'Active Service', 'Ending Service'
   ServiceActiveFlag boolean
+
+  // ETL audit columns
+  ETL_InsertDate datetime [not null]
+  ETL_UpdateDate datetime
+  ETL_BatchID int
+  RecordSourceSystem varchar(50)
 }
 
 Table Fact_Service_Lifecycle_Accumulating {
@@ -183,6 +206,7 @@ Table Fact_Service_Lifecycle_Accumulating {
 
   UrbanAreaKey int
 
+  // Bridge foreign keys for drill-down to annual data
   FirstObservedDateKey int
   PeakPerformanceDateKey int
   LatestObservedDateKey int
@@ -209,6 +233,12 @@ Table Fact_Service_Lifecycle_Accumulating {
   TotalObservedInjuries int
 
   LifecycleCompleteFlag boolean
+
+  // ETL audit columns (critical for accumulating snapshots)
+  ETL_InsertDate datetime [not null]
+  ETL_UpdateDate datetime
+  ETL_BatchID int
+  RecordSourceSystem varchar(50)
 }
 
 Ref: Fact_Annual_Service_Performance.DateKey > DimDate.DateKey
@@ -223,11 +253,12 @@ Ref: Fact_Major_Safety_Event.ModeKey > DimMode.ModeKey
 Ref: Fact_Major_Safety_Event.ServiceTypeKey > DimServiceType.ServiceTypeKey
 Ref: Fact_Major_Safety_Event.UrbanAreaKey > DimUrbanArea.UrbanAreaKey
 Ref: Fact_Major_Safety_Event.SafetyEventTypeKey > DimSafetyEventType.SafetyEventTypeKey
-Ref: Fact_Major_Safety_Event.SafetyIncidentKey > DimSafetyIncident.SafetyIncidentKey
+Ref: Fact_Major_Safety_Event.SafetyIncidentDescriptionKey > DimSafetyIncident.SafetyIncidentKey
 
 Ref: Fact_Service_Availability.AgencyKey > DimAgency.AgencyKey
 Ref: Fact_Service_Availability.ModeKey > DimMode.ModeKey
 Ref: Fact_Service_Availability.ServiceTypeKey > DimServiceType.ServiceTypeKey
+Ref: Fact_Service_Availability.CommitmentDateKey > DimDate.DateKey
 Ref: Fact_Service_Availability.StartDateKey > DimDate.DateKey
 Ref: Fact_Service_Availability.EndDateKey > DimDate.DateKey
 
