@@ -144,8 +144,10 @@ GO
 -- ============================================================
 -- 2. FactEmployeeSnapshot
 --
--- GRAIN: One row per SnapshotMonth × Agency × LaborCategory
---        × EmploymentType × Mode × ServiceType
+--GRAIN:
+--One row per
+--Year × Agency × Department × Job Role
+--× Employment Type × Mode × Service Type
 --
 -- MEASURES (Additive):
 --   * EmployeeCount: Headcount at snapshot date (semi-additive: time-sensitive)
@@ -154,10 +156,9 @@ GO
 --   * TotalOvertimeHours: Cumulative OT hours (additive within period)
 --   * TotalPaidHours: Total paid (additive within period)
 --
--- FACT SOURCE: stg_employee_monthly_snapshot (one snapshot = one row)
+-- FACT SOURCE: stg_employee_annual_snapshot (one snapshot = one row)
 --              Aggregated from detailed employee records
 -- ============================================================
-
 IF OBJECT_ID('dw_HR.FactEmployeeSnapshot', 'U') IS NOT NULL
     DROP TABLE dw_HR.FactEmployeeSnapshot;
 GO
@@ -165,91 +166,146 @@ GO
 CREATE TABLE dw_HR.FactEmployeeSnapshot (
 
     -- Surrogate fact key
-    SnapshotFactKey             BIGINT          NOT NULL    IDENTITY(1,1),
-
-    -- Foreign keys to dimensions (NOT NULL for required dimensions)
-    DateKey                     INT             NOT NULL,    -- Snapshot month/year
+    SnapshotFactKey             BIGINT          NOT NULL IDENTITY(1,1),
+    -- Foreign keys to dimensions
+    DateKey                     INT             NOT NULL,
     AgencyKey                   INT             NOT NULL,
     ModeKey                     INT             NOT NULL,
     ServiceTypeKey              INT             NOT NULL,
     EmploymentTypeKey           INT             NOT NULL,
     DepartmentKey               INT             NOT NULL,
-
-    -- Optional dimension reference (JobRole may not apply to all workforce)
+    -- Optional dimension reference
     JobRoleKey                  INT             NULL,
+    -- Measures
+    -- Annual workforce snapshot measures
 
-    -- Semi-additive headcount measure
-    EmployeeCount               INT             NULL,       -- Headcount at snapshot date
-
-    -- Semi-additive wage measure (use average aggregation)
+    EmployeeCount               INT             NULL,
     AverageHourlyWage           DECIMAL(18,2)   NULL,
-
-    -- Additive hour measures (within time period)
     TotalHoursWorked            DECIMAL(18,2)   NULL,
-    TotalOvertimeHours          DECIMAL(18,2)   NULL,
-    TotalPaidHours              DECIMAL(18,2)   NULL,
-
     -- --------------------------------------------------------
     -- Constraints
     -- --------------------------------------------------------
+
     CONSTRAINT PK_FactEmployeeSnapshot
         PRIMARY KEY CLUSTERED (SnapshotFactKey),
 
-    -- Foreign key constraints
+
+
+    -- Foreign Keys
+
     CONSTRAINT FK_FactEmployeeSnapshot_DateKey
         FOREIGN KEY (DateKey)
         REFERENCES dw_HR.DimDate (DateKey),
+
+
     CONSTRAINT FK_FactEmployeeSnapshot_AgencyKey
         FOREIGN KEY (AgencyKey)
         REFERENCES dw_HR.DimAgency (AgencyKey),
+
+
     CONSTRAINT FK_FactEmployeeSnapshot_ModeKey
         FOREIGN KEY (ModeKey)
         REFERENCES dw_HR.DimMode (ModeKey),
+
+
     CONSTRAINT FK_FactEmployeeSnapshot_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
         REFERENCES dw_HR.DimServiceType (ServiceTypeKey),
+
+
     CONSTRAINT FK_FactEmployeeSnapshot_EmploymentTypeKey
         FOREIGN KEY (EmploymentTypeKey)
         REFERENCES dw_HR.DimEmploymentType (EmploymentTypeKey),
+
+
     CONSTRAINT FK_FactEmployeeSnapshot_DepartmentKey
         FOREIGN KEY (DepartmentKey)
         REFERENCES dw_HR.DimDepartment (DepartmentKey),
+
+
     CONSTRAINT FK_FactEmployeeSnapshot_JobRoleKey
         FOREIGN KEY (JobRoleKey)
         REFERENCES dw_HR.DimJobRole (JobRoleKey),
 
-    -- Measure value constraints (non-negative)
+    -- --------------------------------------------------------
+    -- Measure Constraints
+    -- --------------------------------------------------------
+
     CONSTRAINT CK_FactEmployeeSnapshot_EmployeeCount
-        CHECK (EmployeeCount IS NULL OR EmployeeCount >= 0),
+        CHECK (
+            EmployeeCount IS NULL
+            OR EmployeeCount >= 0
+        ),
+
+
     CONSTRAINT CK_FactEmployeeSnapshot_AverageHourlyWage
-        CHECK (AverageHourlyWage IS NULL OR AverageHourlyWage >= 0),
+        CHECK (
+            AverageHourlyWage IS NULL
+            OR AverageHourlyWage >= 0
+        ),
+
+
     CONSTRAINT CK_FactEmployeeSnapshot_TotalHoursWorked
-        CHECK (TotalHoursWorked IS NULL OR TotalHoursWorked >= 0),
-    CONSTRAINT CK_FactEmployeeSnapshot_TotalOvertimeHours
-        CHECK (TotalOvertimeHours IS NULL OR TotalOvertimeHours >= 0),
-    CONSTRAINT CK_FactEmployeeSnapshot_TotalPaidHours
-        CHECK (TotalPaidHours IS NULL OR TotalPaidHours >= 0)
+        CHECK (
+            TotalHoursWorked IS NULL
+            OR TotalHoursWorked >= 0
+        )
+
 );
 GO
-
--- Index on grain dimensions for snapshot queries
+-- ========================================================
+-- Index on snapshot grain dimensions
+-- ========================================================
 CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_Grain
-    ON dw_HR.FactEmployeeSnapshot (DateKey, AgencyKey, EmploymentTypeKey, DepartmentKey)
-    INCLUDE (EmployeeCount, AverageHourlyWage, TotalHoursWorked, TotalPaidHours);
+ON dw_HR.FactEmployeeSnapshot
+(
+    DateKey,
+    AgencyKey,
+    EmploymentTypeKey,
+    DepartmentKey
+)
+INCLUDE
+(
+    EmployeeCount,
+    AverageHourlyWage,
+    TotalHoursWorked
+);
 GO
+-- ========================================================
+-- Index for agency level HR analytics
+-- ========================================================
 
--- Index for agency-level HR analytics
 CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_Agency
-    ON dw_HR.FactEmployeeSnapshot (AgencyKey, DateKey)
-    INCLUDE (EmployeeCount, AverageHourlyWage, TotalPaidHours);
-GO
 
--- Index for mode/service type coverage analysis
+ON dw_HR.FactEmployeeSnapshot
+(
+    AgencyKey,
+    DateKey
+)
+
+INCLUDE
+(
+    EmployeeCount,
+    AverageHourlyWage
+);
+
+GO
+-- ========================================================
+-- Index for mode/service analysis
+-- ========================================================
 CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_ModeService
-    ON dw_HR.FactEmployeeSnapshot (ModeKey, ServiceTypeKey, DateKey)
-    INCLUDE (EmployeeCount, TotalHoursWorked);
+ON dw_HR.FactEmployeeSnapshot
+(
+    ModeKey,
+    ServiceTypeKey,
+    DateKey
+)
+INCLUDE
+(
+    EmployeeCount,
+    TotalHoursWorked
+);
 GO
-
 -- ============================================================
 -- 3. FactAgencyLaborCoverage
 --
