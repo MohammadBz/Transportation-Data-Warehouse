@@ -3,8 +3,6 @@
 -- ============================================================
 -- FILE:     06_load_FactJobPosting_etl.sql
 -- SCHEMA:   dw_HR
--- DATABASE: TransportationDB
--- AUTHOR:   Parnian Ghaisari
 -- DESC:     ETL Pipeline Procedure for FactJobPosting (Fact 1)
 --           Matches grain: One row per unique OpeningID transaction.
 -- ============================================================
@@ -166,13 +164,13 @@ END;
 GO
 
 -- ============================================================
+-- ============================================================
 -- FILE:     07_load_FactEmployeeSnapshot_etl.sql
 -- SCHEMA:   dw_HR
--- DATABASE: TransportationDB
--- AUTHOR:   Parnian Ghaisari
 -- DESC:     ETL Pipeline Procedure for FactEmployeeSnapshot (Fact 2)
 --           Type: Periodic Snapshot Fact Table
---           Grain: One row per Year x Agency x Labor Category x Employment Type x Mode x Service Type
+--           Grain: Year x Agency x Department x EmploymentType x OperatorStatus x Mode x ServiceType
+--           Adapted dynamically to explicitly read from real yearly staging tables (2014-2023).
 -- ============================================================
 
 USE [TransportationDB];
@@ -184,7 +182,7 @@ GO
 
 CREATE PROCEDURE dw_HR.sp_Load_FactEmployeeSnapshot
     @BatchID INT = NULL,
-    @SourceSystem VARCHAR(50) = 'NTD_Agency_Employees_Staging',
+    @SourceSystem VARCHAR(50) = 'NTD_Yearly_Staging_Tables',
     @ReloadIfExists BIT = 1
 AS
 BEGIN
@@ -196,200 +194,227 @@ BEGIN
     DECLARE @LoadStartTime DATETIME2 = SYSDATETIME();
     DECLARE @TransactionStarted BIT = 0;
 
-    -- 1. Initialize ETL Audit Log Entry for Periodic Tracking
+    -- Initialize operational audit logging
     INSERT INTO dw_transport.etl_load_audit (procedure_name, load_date, load_start_time, status)
     VALUES ('dw_HR.sp_Load_FactEmployeeSnapshot', CAST(GETDATE() AS DATE), @LoadStartTime, 'IN_PROGRESS');
     DECLARE @AuditId INT = SCOPE_IDENTITY();
 
     BEGIN TRY
-        -- Establish transactional context
         IF @@TRANCOUNT = 0
         BEGIN
             BEGIN TRANSACTION;
             SET @TransactionStarted = 1;
         END
 
-        -- 2. Enforce Idempotency Principle (Clear existing snapshot data for years undergoing a reload)
+        -- Enforce Idempotency Principle by clearing target partition data
         IF @ReloadIfExists = 1
         BEGIN
-            DELETE FROM dw_HR.FactEmployeeSnapshot
-            WHERE YearKey IN (SELECT DISTINCT ReportYear FROM stg_HR.stg_transit_employees);
+            DELETE FROM dw_HR.FactEmployeeSnapshot WHERE YearKey BETWEEN 2014 AND 2023;
             SET @RowsDeleted = @@ROWCOUNT;
         END
 
-        -- 3. Provision volatile temporary storage structures to pivot wide staging attributes to tabular format
-        -- Segregating staging employee dimensions across Hours Worked and Employee Count properties
-
-        IF OBJECT_ID('tempdb..#EmpHoursUnpvt', 'U') IS NOT NULL DROP TABLE #EmpHoursUnpvt;
-        IF OBJECT_ID('tempdb..#EmpCountUnpvt', 'U') IS NOT NULL DROP TABLE #EmpCountUnpvt;
-
-        -- Unpivot operation mapping wide operational structures to structured Labor Metrics (Hours)
-        SELECT
-            ReportYear, NTD_ID, ModeCode, TOSCode,
-            LaborCategory, EmploymentType, OperatorStatus,
-            CAST(HoursValue AS DECIMAL(18,2)) AS HoursWorked
-        INTO #EmpHoursUnpvt
+        -- 1. Unified CTE Layer: Normalize and merge structural differences between 2014-2018 and 2019-2023 eras
+        ;WITH cte_NormalizedTransitEmployees AS (
+            -- Legacy Era (2014-2018): Map matching columns and default operator tags safely
+            SELECT 2014 AS ReportYear, ntd_id, mode, tos,
+                full_time_vehicle_operations_hours AS FT_Op_VehOp_Hrs, CAST(0 AS NUMERIC(18,2)) AS FT_NonOp_VehOp_Hrs,
+                full_time_vehicle_maintenance_hours AS FT_NonOp_VehMaint_Hrs, full_time_non_vehicle_maintenance_hours AS FT_NonOp_FacMaint_Hrs,
+                full_time_general_administration_hours AS FT_NonOp_GenAdmin_Hrs,
+                full_time_vehicle_operations_employee_count AS FT_Op_VehOp_Cnt, CAST(0 AS NUMERIC(18,2)) AS FT_NonOp_VehOp_Cnt,
+                full_time_vehicle_maintenance_employee_count AS FT_NonOp_VehMaint_Cnt, full_time_non_vehicle_maintenance_employee_count AS FT_NonOp_FacMaint_Cnt,
+                full_time_general_administration_employee_count AS FT_NonOp_GenAdmin_Cnt,
+                part_time_vehicle_operations_hours AS PT_Op_VehOp_Hrs, CAST(0 AS NUMERIC(18,2)) AS PT_NonOp_VehOp_Hrs,
+                part_time_vehicle_maintenance_hours AS PT_NonOp_VehMaint_Hrs, part_time_non_vehicle_maintenance_hours AS PT_NonOp_FacMaint_Hrs,
+                part_time_general_administration_hours AS PT_NonOp_GenAdmin_Hrs,
+                part_time_vehicle_operations_employee_count AS PT_Op_VehOp_Cnt, CAST(0 AS NUMERIC(18,2)) AS PT_NonOp_VehOp_Cnt,
+                part_time_vehicle_maintenance_employee_count AS PT_NonOp_VehMaint_Cnt, part_time_non_vehicle_maintenance_employee_count AS PT_NonOp_FacMaint_Cnt,
+                part_time_general_administration_employee_count AS PT_NonOp_GenAdmin_Cnt
+            FROM stg_HR.stg_transit_agency_employees_2014
+            UNION ALL
+            SELECT 2015 AS ReportYear, ntd_id, mode, tos,
+                full_time_vehicle_operations_hours, 0, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours,
+                full_time_vehicle_operations_employee_count, 0, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count,
+                part_time_vehicle_operations_hours, 0, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours,
+                part_time_vehicle_operations_employee_count, 0, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2015
+            UNION ALL
+            SELECT 2016 AS ReportYear, ntd_id, mode, tos,
+                full_time_vehicle_operations_hours, 0, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours,
+                full_time_vehicle_operations_employee_count, 0, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count,
+                part_time_vehicle_operations_hours, 0, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours,
+                part_time_vehicle_operations_employee_count, 0, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2016
+            UNION ALL
+            SELECT 2017 AS ReportYear, ntd_id, mode, tos,
+                full_time_vehicle_operations_hours, 0, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours,
+                full_time_vehicle_operations_employee_count, 0, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count,
+                part_time_vehicle_operations_hours, 0, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours,
+                part_time_vehicle_operations_employee_count, 0, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2017
+            UNION ALL
+            SELECT 2018 AS ReportYear, ntd_id, mode, tos,
+                full_time_vehicle_operations_hours, 0, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours,
+                full_time_vehicle_operations_employee_count, 0, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count,
+                part_time_vehicle_operations_hours, 0, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours,
+                part_time_vehicle_operations_employee_count, 0, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2018
+            UNION ALL
+            -- Modern Detailed Era (2019-2023): Explicitly bind full operational splits
+            SELECT 2019 AS ReportYear, ntd_id, mode, tos,
+                full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked,
+                full_time_non_operator_vehicle_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, full_time_non_operator_general_administration_hours_worked,
+                full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count,
+                full_time_non_operator_vehicle_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, full_time_non_operator_general_administration_employee_count,
+                part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked,
+                part_time_non_operator_vehicle_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, part_time_non_operator_general_administration_hours_worked,
+                part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count,
+                part_time_non_operator_vehicle_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, part_time_non_operator_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2019
+            UNION ALL
+            SELECT 2020 AS ReportYear, ntd_id, mode, tos,
+                full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked,
+                full_time_non_operator_vehicle_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, full_time_non_operator_general_administration_hours_worked,
+                full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count,
+                full_time_non_operator_vehicle_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, full_time_non_operator_general_administration_employee_count,
+                part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked,
+                part_time_non_operator_vehicle_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, part_time_non_operator_general_administration_hours_worked,
+                part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count,
+                part_time_non_operator_vehicle_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, part_time_non_operator_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2020
+            UNION ALL
+            SELECT 2021 AS ReportYear, ntd_id, mode, tos,
+                full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked,
+                full_time_non_operator_vehicle_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, full_time_non_operator_general_administration_hours_worked,
+                full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count,
+                full_time_non_operator_vehicle_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, full_time_non_operator_general_administration_employee_count,
+                part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked,
+                part_time_non_operator_vehicle_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, part_time_non_operator_general_administration_hours_worked,
+                part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count,
+                part_time_non_operator_vehicle_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, part_time_non_operator_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2021
+            UNION ALL
+            SELECT 2022 AS ReportYear, ntd_id, mode, tos,
+                full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked,
+                full_time_non_operator_vehicle_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, full_time_non_operator_general_administration_hours_worked,
+                full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count,
+                full_time_non_operator_vehicle_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, full_time_non_operator_general_administration_employee_count,
+                part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked,
+                part_time_non_operator_vehicle_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, part_time_non_operator_general_administration_hours_worked,
+                part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count,
+                part_time_non_operator_vehicle_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, part_time_non_operator_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2022
+            UNION ALL
+            SELECT 2023 AS ReportYear, ntd_id, mode, tos,
+                full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked,
+                full_time_non_operator_vehicle_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, full_time_non_operator_general_administration_hours_worked,
+                full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count,
+                full_time_non_operator_vehicle_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, full_time_non_operator_general_administration_employee_count,
+                part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked,
+                part_time_non_operator_vehicle_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, part_time_non_operator_general_administration_hours_worked,
+                part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count,
+                part_time_non_operator_vehicle_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, part_time_non_operator_general_administration_employee_count
+            FROM stg_HR.stg_transit_agency_employees_2023
+        )
+        -- 2. Materialize normalized records into local transactional structures for metric splitting
+        SELECT ReportYear, ntd_id, mode AS ModeCode, tos AS TOSCode, EmploymentType, LaborCategory, OperatorStatus, HoursWorked, EmployeeCount
+        INTO #EmpPivotedBase
         FROM (
-            SELECT
-                ReportYear, NTD_ID, Mode AS ModeCode, TOS AS TOSCode,
-                -- Map explicit structural database columns from original Excel staging boundaries
-                [Full_Time_Op_Hours] AS [FullTime_Vehicle Operations_Operator],
-                [Full_Time_NonOp_Hours] AS [FullTime_Vehicle Operations_Non-Operator],
-                [Full_Time_Maint_Hours] AS [FullTime_Vehicle Maintenance_Non-Operator],
-                [Part_Time_Op_Hours] AS [PartTime_Vehicle Operations_Operator],
-                [Part_Time_NonOp_Hours] AS [PartTime_Vehicle Operations_Non-Operator]
-            FROM stg_HR.stg_transit_employees
-        ) p
+            SELECT ReportYear, ntd_id, mode, tos,
+                FT_Op_VehOp_Hrs AS [FullTime_Vehicle Operations_Operator_Hrs], FT_NonOp_VehOp_Hrs AS [FullTime_Vehicle Operations_Non-Operator_Hrs],
+                FT_NonOp_VehMaint_Hrs AS [FullTime_Vehicle Maintenance_Non-Operator_Hrs], FT_NonOp_FacMaint_Hrs AS [FullTime_Facility Maintenance_Non-Operator_Hrs],
+                FT_NonOp_GenAdmin_Hrs AS [FullTime_General Administration_Non-Operator_Hrs],
+                PT_Op_VehOp_Hrs AS [PartTime_Vehicle Operations_Operator_Hrs], PT_NonOp_VehOp_Hrs AS [PartTime_Vehicle Operations_Non-Operator_Hrs],
+                PT_NonOp_VehMaint_Hrs AS [PartTime_Vehicle Maintenance_Non-Operator_Hrs], PT_NonOp_FacMaint_Hrs AS [PartTime_Facility Maintenance_Non-Operator_Hrs],
+                PT_NonOp_GenAdmin_Hrs AS [PartTime_General Administration_Non-Operator_Hrs],
+                FT_Op_VehOp_Cnt AS [FullTime_Vehicle Operations_Operator_Cnt], FT_NonOp_VehOp_Cnt AS [FullTime_Vehicle Operations_Non-Operator_Cnt],
+                FT_NonOp_VehMaint_Cnt AS [FullTime_Vehicle Maintenance_Non-Operator_Cnt], FT_NonOp_FacMaint_Cnt AS [FullTime_Facility Maintenance_Non-Operator_Cnt],
+                FT_NonOp_GenAdmin_Cnt AS [FullTime_General Administration_Non-Operator_Cnt],
+                PT_Op_VehOp_Cnt AS [PartTime_Vehicle Operations_Operator_Cnt], PT_NonOp_VehOp_Cnt AS [PartTime_Vehicle Operations_Non-Operator_Cnt],
+                PT_NonOp_VehMaint_Cnt AS [PartTime_Vehicle Maintenance_Non-Operator_Cnt], PT_NonOp_FacMaint_Cnt AS [PartTime_Facility Maintenance_Non-Operator_Cnt],
+                PT_NonOp_GenAdmin_Cnt AS [PartTime_General Administration_Non-Operator_Cnt]
+            FROM cte_NormalizedTransitEmployees
+        ) SrcData
         UNPIVOT (
-            HoursValue FOR HoursColumn IN (
-                [FullTime_Vehicle Operations_Operator],
-                [FullTime_Vehicle Operations_Non-Operator],
-                [FullTime_Vehicle Maintenance_Non-Operator],
-                [PartTime_Vehicle Operations_Operator],
-                [PartTime_Vehicle Operations_Non-Operator]
+            HoursWorked FOR HoursCol IN (
+                [FullTime_Vehicle Operations_Operator_Hrs], [FullTime_Vehicle Operations_Non-Operator_Hrs],
+                [FullTime_Vehicle Maintenance_Non-Operator_Hrs], [FullTime_Facility Maintenance_Non-Operator_Hrs], [FullTime_General Administration_Non-Operator_Hrs],
+                [PartTime_Vehicle Operations_Operator_Hrs], [PartTime_Vehicle Operations_Non-Operator_Hrs],
+                [PartTime_Vehicle Maintenance_Non-Operator_Hrs], [PartTime_Facility Maintenance_Non-Operator_Hrs], [PartTime_General Administration_Non-Operator_Hrs]
             )
-        ) AS unpvt
-        -- Parse string variables to extract dimensional parameters
+        ) H_Unpvt
+        UNPIVOT (
+            EmployeeCount FOR CountCol IN (
+                [FullTime_Vehicle Operations_Operator_Cnt], [FullTime_Vehicle Operations_Non-Operator_Cnt],
+                [FullTime_Vehicle Maintenance_Non-Operator_Cnt], [FullTime_Facility Maintenance_Non-Operator_Cnt], [FullTime_General Administration_Non-Operator_Cnt],
+                [PartTime_Vehicle Operations_Operator_Cnt], [PartTime_Vehicle Operations_Non-Operator_Cnt],
+                [PartTime_Vehicle Maintenance_Non-Operator_Cnt], [PartTime_Facility Maintenance_Non-Operator_Cnt], [PartTime_General Administration_Non-Operator_Cnt]
+            )
+        ) C_Unpvt
         CROSS APPLY (
             SELECT
-                PARSENAME(REPLACE(HoursColumn, '_', '.'), 3) AS EmploymentType,
-                PARSENAME(REPLACE(HoursColumn, '_', '.'), 2) AS LaborCategory,
-                PARSENAME(REPLACE(HoursColumn, '_', '.'), 1) AS OperatorStatus
-        ) M;
+                PARSENAME(REPLACE(HoursCol, '_', '.'), 4) AS EmploymentType,
+                PARSENAME(REPLACE(HoursCol, '_', '.'), 3) AS LaborCategory,
+                PARSENAME(REPLACE(HoursCol, '_', '.'), 2) AS OperatorStatus
+        ) M
+        -- Validate aligned array elements between Hours and Headcount vectors
+        WHERE PARSENAME(REPLACE(HoursCol, '_', '.'), 4) = PARSENAME(REPLACE(CountCol, '_', '.'), 4)
+          AND PARSENAME(REPLACE(HoursCol, '_', '.'), 3) = PARSENAME(REPLACE(CountCol, '_', '.'), 3)
+          AND PARSENAME(REPLACE(HoursCol, '_', '.'), 2) = PARSENAME(REPLACE(CountCol, '_', '.'), 2)
+          AND (HoursWorked > 0 OR EmployeeCount > 0);
 
-        -- Unpivot operation mapping wide headcount attributes to operational Headcounts (Counts)
-        SELECT
-            ReportYear, NTD_ID, ModeCode, TOSCode,
-            LaborCategory, EmploymentType, OperatorStatus,
-            CAST(CountValue AS INT) AS EmployeeCount
-        INTO #EmpCountUnpvt
-        FROM (
-            SELECT
-                ReportYear, NTD_ID, Mode AS ModeCode, TOS AS TOSCode,
-                [Full_Time_Op_Count] AS [FullTime_Vehicle Operations_Operator],
-                [Full_Time_NonOp_Count] AS [FullTime_Vehicle Operations_Non-Operator],
-                [Full_Time_Maint_Count] AS [FullTime_Vehicle Maintenance_Non-Operator],
-                [Part_Time_Op_Count] AS [PartTime_Vehicle Operations_Operator],
-                [Part_Time_NonOp_Count] AS [PartTime_Vehicle Operations_Non-Operator]
-            FROM stg_HR.stg_transit_employees
-        ) p
-        UNPIVOT (
-            CountValue FOR CountColumn IN (
-                [FullTime_Vehicle Operations_Operator],
-                [FullTime_Vehicle Operations_Non-Operator],
-                [FullTime_Vehicle Maintenance_Non-Operator],
-                [PartTime_Vehicle Operations_Operator],
-                [PartTime_Vehicle Operations_Non-Operator]
-            )
-        ) AS unpvt
-        CROSS APPLY (
-            SELECT
-                PARSENAME(REPLACE(CountColumn, '_', '.'), 3) AS EmploymentType,
-                PARSENAME(REPLACE(CountColumn, '_', '.'), 2) AS LaborCategory,
-                PARSENAME(REPLACE(CountColumn, '_', '.'), 1) AS OperatorStatus
-        ) M;
-
-        -- 4. Construct Consolidated Composite Master Grain to bind structural columns seamlessly
-        IF OBJECT_ID('tempdb..#SnapshotMasterGrain', 'U') IS NOT NULL DROP TABLE #SnapshotMasterGrain;
-
-        SELECT DISTINCT ReportYear, NTD_ID, ModeCode, TOSCode, LaborCategory, EmploymentType, OperatorStatus
-            INTO #SnapshotMasterGrain
-        FROM #EmpHoursUnpvt
-        UNION
-        SELECT DISTINCT ReportYear, NTD_ID, ModeCode, TOSCode, LaborCategory, EmploymentType, OperatorStatus
-        FROM #EmpCountUnpvt;
-
-        -- 5. Ingest granular measures into target fact tables with dimensional connections
+        -- 3. Dimension Lookups & Fact Table Population
         INSERT INTO dw_HR.FactEmployeeSnapshot (
             YearKey, AgencyKey, ModeKey, ServiceTypeKey, DepartmentKey, EmploymentTypeKey,
             HoursWorked, EmployeeCount, FullTimeEquivalent,
             ETL_InsertDate, ETL_BatchID, RecordSourceSystem
         )
         SELECT
-            -- Mapping Foreign Keys to Star Schema Dimensions
             src.ReportYear AS YearKey,
             ISNULL(a.AgencyKey, -1) AS AgencyKey,
             ISNULL(m.ModeKey, -1) AS ModeKey,
             ISNULL(s.ServiceTypeKey, -1) AS ServiceTypeKey,
             ISNULL(dept.DepartmentKey, -1) AS DepartmentKey,
             ISNULL(e.EmploymentTypeKey, -1) AS EmploymentTypeKey,
-
-            -- Consolidate numeric properties extracted from localized temporary staging transformations
-            ISNULL(h.HoursWorked, 0.00) AS HoursWorked,
-            ISNULL(c.EmployeeCount, 0) AS EmployeeCount,
-
-            -- Derivation metric: Compute Full-Time Equivalent (FTE) based on standard 2080 annual working hour baseline
-            CAST(ISNULL(h.HoursWorked, 0.00) / 2080.0 AS DECIMAL(18,4)) AS FullTimeEquivalent,
-
-            -- Pipeline Audit Lineage Metadata attributes
+            ISNULL(src.HoursWorked, 0.00) AS HoursWorked,
+            ISNULL(src.EmployeeCount, 0) AS EmployeeCount,
+            CAST(ISNULL(src.HoursWorked, 0.00) / 2080.0 AS DECIMAL(18,4)) AS FullTimeEquivalent,
             @LoadStartTime AS ETL_InsertDate,
             @BatchID AS ETL_BatchID,
             @SourceSystem AS RecordSourceSystem
-
-        FROM #SnapshotMasterGrain src
-
-        -- Relational Left Joins against granular temporary staging subsets
-        LEFT JOIN #EmpHoursUnpvt h
-            ON src.ReportYear = h.ReportYear AND src.NTD_ID = h.NTD_ID
-            AND src.ModeCode = h.ModeCode AND src.TOSCode = h.TOSCode
-            AND src.LaborCategory = h.LaborCategory AND src.EmploymentType = h.EmploymentType
-            AND src.OperatorStatus = h.OperatorStatus
-
-        LEFT JOIN #EmpCountUnpvt c
-            ON src.ReportYear = c.ReportYear AND src.NTD_ID = c.NTD_ID
-            AND src.ModeCode = c.ModeCode AND src.TOSCode = c.TOSCode
-            AND src.LaborCategory = c.LaborCategory AND src.EmploymentType = c.EmploymentType
-            AND src.OperatorStatus = c.OperatorStatus
-
-        -- Evaluate Natural Keys to establish Dimension Surrogate Relationships
-        LEFT JOIN dw_HR.DimAgency a
-            ON src.NTD_ID = a.NTD_ID
-            AND a.IsCurrent = 1 -- Enforces lookup validation using the latest active version (SCD)
-
-        LEFT JOIN dw_HR.DimMode m
-            ON UPPER(LTRIM(RTRIM(src.ModeCode))) = m.ModeCode
-
-        LEFT JOIN dw_HR.DimServiceType s
-            ON UPPER(LTRIM(RTRIM(src.TOSCode))) = s.TOSCode
-
-        LEFT JOIN dw_HR.DimEmploymentType e
-            ON e.EmploymentTypeName = LTRIM(RTRIM(src.EmploymentType))
-
-        LEFT JOIN dw_HR.DimDepartment dept
-            ON dept.DepartmentName = LTRIM(RTRIM(src.LaborCategory));
+        FROM #EmpPivotedBase src
+        LEFT JOIN dw_HR.DimAgency a ON src.ntd_id = a.NTD_ID AND a.IsCurrent = 1
+        LEFT JOIN dw_HR.DimMode m ON UPPER(LTRIM(RTRIM(src.ModeCode))) = m.ModeCode
+        LEFT JOIN dw_HR.DimServiceType s ON UPPER(LTRIM(RTRIM(src.TOSCode))) = s.TOSCode
+        LEFT JOIN dw_HR.DimEmploymentType e ON e.EmploymentTypeName = LTRIM(RTRIM(src.EmploymentType))
+        LEFT JOIN dw_HR.DimDepartment dept ON dept.DepartmentName = LTRIM(RTRIM(src.LaborCategory));
 
         SET @RowsInserted = @@ROWCOUNT;
 
-        -- Record pipeline success transaction status within centralized auditing layout
         UPDATE dw_transport.etl_load_audit
-        SET load_end_time = SYSDATETIME(),
-            rows_processed = @RowsInserted,
-            rows_inserted = @RowsInserted,
-            rows_deleted = @RowsDeleted,
-            status = 'SUCCESS'
+        SET load_end_time = SYSDATETIME(), rows_processed = @RowsInserted, rows_inserted = @RowsInserted, rows_deleted = @RowsDeleted, status = 'SUCCESS'
         WHERE audit_id = @AuditId;
 
         IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
             COMMIT TRANSACTION;
 
-        PRINT CONCAT('FactEmployeeSnapshot Periodic Loaded Successfully. Rows Inserted: ', @RowsInserted);
+        PRINT CONCAT('FactEmployeeSnapshot Periodic Loaded. Rows Inserted: ', @RowsInserted);
     END TRY
     BEGIN CATCH
-        -- Restructure environment status through explicit data rollbacks on exception handling
-        IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
-
-        -- Document explicit runtime exception properties to database error audit layout
-        UPDATE dw_transport.etl_load_audit
-        SET load_end_time = SYSDATETIME(),
-            status = 'FAILED',
-            error_message = ERROR_MESSAGE()
-        WHERE audit_id = @AuditId;
-
-        RAISERROR('Critical Error in FactEmployeeSnapshot Periodic Ingestion.', 16, 1);
+        IF @TransactionStarted = 1 AND @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        UPDATE dw_transport.etl_load_audit SET load_end_time = SYSDATETIME(), status = 'FAILED', error_message = ERROR_MESSAGE() WHERE audit_id = @AuditId;
+        RAISERROR('Critical Error in FactEmployeeSnapshot Staging Pipeline.', 16, 1);
     END CATCH
 END;
 GO
+
+-- ============================================================
+-- FILE:     08_load_FactAgencyLaborCoverage_etl.sql
+-- SCHEMA:   dw_HR
+-- DESC:     ETL Pipeline Procedure for FactAgencyLaborCoverage (Fact 3)
+--           Type: Factless Fact Table (Operational Coverage Mapping)
+--           Grain: YearKey x AgencyKey x DepartmentKey x ModeKey x ServiceTypeKey x EmploymentTypeKey
+--           Adapted dynamically to explicitly read from real yearly staging tables (2014-2023).
+-- ============================================================
 
 USE [TransportationDB];
 GO
@@ -400,7 +425,7 @@ GO
 
 CREATE PROCEDURE dw_HR.sp_Load_FactAgencyLaborCoverage
     @BatchID INT = NULL,
-    @SourceSystem VARCHAR(50) = 'NTD_Agency_Employees_Staging',
+    @SourceSystem VARCHAR(50) = 'NTD_Yearly_Staging_Tables',
     @ReloadIfExists BIT = 1
 AS
 BEGIN
@@ -412,116 +437,119 @@ BEGIN
     DECLARE @LoadStartTime DATETIME = GETDATE();
     DECLARE @TransactionStarted BIT = 0;
 
-    -- 1. Initialize ETL Audit Log Entry
     INSERT INTO dw_transport.etl_load_audit (procedure_name, load_date, load_start_time, status)
     VALUES ('dw_HR.sp_Load_FactAgencyLaborCoverage', CAST(GETDATE() AS DATE), @LoadStartTime, 'IN_PROGRESS');
     DECLARE @AuditId INT = SCOPE_IDENTITY();
 
     BEGIN TRY
-        -- Open Transaction Context
         IF @@TRANCOUNT = 0
         BEGIN
             BEGIN TRANSACTION;
             SET @TransactionStarted = 1;
         END
 
-        -- 2. Enforce Idempotency Principle (Clear existing coverage records for years being reloaded)
+        -- Enforce Idempotency Principle over target date boundaries
         IF @ReloadIfExists = 1
         BEGIN
             DELETE FROM dw_HR.FactAgencyLaborCoverage
-            WHERE DateKey IN (
-                SELECT DISTINCT d.DateKey
-                FROM stg_HR.stg_transit_employees src
-                JOIN dw_HR.DimDate d ON d.CalendarYear = src.ReportYear AND d.IsYearLevel = 1
-            );
+            WHERE DateKey IN (SELECT d.DateKey FROM dw_HR.DimDate d WHERE d.CalendarYear BETWEEN 2014 AND 2023 AND d.IsYearLevel = 1);
             SET @RowsDeleted = @@ROWCOUNT;
         END
 
-        -- 3. Extract and Unpivot Distinct Operational Combinations from Staging Layer
-        IF OBJECT_ID('tempdb..#StgDistinctCoverage', 'U') IS NOT NULL DROP TABLE #StgDistinctCoverage;
+        -- 1. Consolidated Data Ingestion Layer across legacy and modern schemas
+        ;WITH cte_RawUnion AS (
+            SELECT 2014 AS ReportYear, ntd_id, mode, tos, full_time_vehicle_operations_hours AS Hrs, 'FullTime' AS EmpType, 'Vehicle Operations' AS Dept FROM stg_HR.stg_transit_agency_employees_2014 UNION ALL
+            SELECT 2014, ntd_id, mode, tos, full_time_vehicle_maintenance_hours, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2014 UNION ALL
+            SELECT 2014, ntd_id, mode, tos, full_time_non_vehicle_maintenance_hours, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2014 UNION ALL
+            SELECT 2014, ntd_id, mode, tos, full_time_general_administration_hours, 'FullTime', 'General Administration' FROM stg_HR.stg_transit_agency_employees_2014 UNION ALL
+            SELECT 2014, ntd_id, mode, tos, part_time_vehicle_operations_hours, 'PartTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2014 UNION ALL
+            SELECT 2014, ntd_id, mode, tos, part_time_vehicle_maintenance_hours, 'PartTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2014 UNION ALL
+            SELECT 2014, ntd_id, mode, tos, part_time_non_vehicle_maintenance_hours, 'PartTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2014 UNION ALL
+            SELECT 2014, ntd_id, mode, tos, part_time_general_administration_hours, 'PartTime', 'General Administration' FROM stg_HR.stg_transit_agency_employees_2014
 
-        SELECT DISTINCT
-            ReportYear, NTD_ID, ModeCode, TOSCode, LaborCategory, EmploymentType
-        INTO #StgDistinctCoverage
-        FROM (
-            SELECT
-                ReportYear, NTD_ID, Mode AS ModeCode, TOS AS TOSCode,
-                -- Verify explicit labor metrics to ensure a valid operational coverage link exists
-                CASE WHEN ISNULL([Full_Time_Op_Hours], 0) > 0 OR ISNULL([Full_Time_Op_Count], 0) > 0 THEN 'Vehicle Operations_Full Time' ELSE NULL END AS V_Op_FT,
-                CASE WHEN ISNULL([Full_Time_NonOp_Hours], 0) > 0 OR ISNULL([Full_Time_NonOp_Count], 0) > 0 THEN 'Vehicle Operations_Full Time' ELSE NULL END AS V_NonOp_FT,
-                CASE WHEN ISNULL([Full_Time_Maint_Hours], 0) > 0 OR ISNULL([Full_Time_Maint_Count], 0) > 0 THEN 'Vehicle Maintenance_Full Time' ELSE NULL END AS V_Maint_FT,
-                CASE WHEN ISNULL([Part_Time_Op_Hours], 0) > 0 OR ISNULL([Part_Time_Op_Count], 0) > 0 THEN 'Vehicle Operations_Part Time' ELSE NULL END AS V_Op_PT,
-                CASE WHEN ISNULL([Part_Time_NonOp_Hours], 0) > 0 OR ISNULL([Part_Time_NonOp_Count], 0) > 0 THEN 'Vehicle Operations_Part Time' ELSE NULL END AS V_NonOp_PT
-            FROM stg_HR.stg_transit_employees
-        ) p
-        UNPIVOT (
-            CoverageString FOR CoverageColumn IN (V_Op_FT, V_NonOp_FT, V_Maint_FT, V_Op_PT, V_NonOp_PT)
-        ) AS unpvt
-        CROSS APPLY (
-            SELECT
-                PARSENAME(REPLACE(CoverageString, '_', '.'), 2) AS LaborCategory,
-                PARSENAME(REPLACE(CoverageString, '_', '.'), 1) AS EmploymentType
-        ) M
-        WHERE CoverageString IS NOT NULL;
+            -- Repeating operational pattern cleanly via loop or macro references for 2015-2018
+            UNION ALL SELECT 2015, ntd_id, mode, tos, full_time_vehicle_operations_hours, 'FullTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2015
+            UNION ALL SELECT 2015, ntd_id, mode, tos, full_time_vehicle_maintenance_hours, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2015
+            UNION ALL SELECT 2015, ntd_id, mode, tos, full_time_non_vehicle_maintenance_hours, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2015
+            UNION ALL SELECT 2015, ntd_id, mode, tos, full_time_general_administration_hours, 'FullTime', 'General Administration' FROM stg_HR.stg_transit_agency_employees_2015
+            UNION ALL SELECT 2015, ntd_id, mode, tos, part_time_vehicle_operations_hours, 'PartTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2015
 
-        -- 4. Ingest Distinct Dimensions into Factless Destination via Surrogate Key Lookups
+            UNION ALL SELECT 2016, ntd_id, mode, tos, full_time_vehicle_operations_hours, 'FullTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2016
+            UNION ALL SELECT 2016, ntd_id, mode, tos, full_time_vehicle_maintenance_hours, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2016
+            UNION ALL SELECT 2016, ntd_id, mode, tos, full_time_non_vehicle_maintenance_hours, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2016
+            UNION ALL SELECT 2016, ntd_id, mode, tos, full_time_general_administration_hours, 'FullTime', 'General Administration' FROM stg_HR.stg_transit_agency_employees_2016
+            UNION ALL SELECT 2016, ntd_id, mode, tos, part_time_vehicle_operations_hours, 'PartTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2016
+
+            UNION ALL SELECT 2017, ntd_id, mode, tos, full_time_vehicle_operations_hours, 'FullTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2017
+            UNION ALL SELECT 2017, ntd_id, mode, tos, full_time_vehicle_maintenance_hours, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2017
+            UNION ALL SELECT 2017, ntd_id, mode, tos, full_time_non_vehicle_maintenance_hours, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2017
+            UNION ALL SELECT 2017, ntd_id, mode, tos, full_time_general_administration_hours, 'FullTime', 'General Administration' FROM stg_HR.stg_transit_agency_employees_2017
+            UNION ALL SELECT 2017, ntd_id, mode, tos, part_time_vehicle_operations_hours, 'PartTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2017
+
+            UNION ALL SELECT 2018, ntd_id, mode, tos, full_time_vehicle_operations_hours, 'FullTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2018
+            UNION ALL SELECT 2018, ntd_id, mode, tos, full_time_vehicle_maintenance_hours, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2018
+            UNION ALL SELECT 2018, ntd_id, mode, tos, full_time_non_vehicle_maintenance_hours, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2018
+            UNION ALL SELECT 2018, ntd_id, mode, tos, full_time_general_administration_hours, 'FullTime', 'General Administration' FROM stg_HR.stg_transit_agency_employees_2018
+            UNION ALL SELECT 2018, ntd_id, mode, tos, part_time_vehicle_operations_hours, 'PartTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2018
+
+            -- Ingest from Modern Structural Variants (2019-2023) using computed sum attributes
+            UNION ALL
+            SELECT ReportYear, ntd_id, mode, tos, total_full_time_vehicle_operations_hours_worked, 'FullTime', 'Vehicle Operations'
+            FROM (
+                SELECT 2019 AS ReportYear, * FROM stg_HR.stg_transit_agency_employees_2019 UNION ALL
+                SELECT 2020, * FROM stg_HR.stg_transit_agency_employees_2020 UNION ALL
+                SELECT 2021, * FROM stg_HR.stg_transit_agency_employees_2021 UNION ALL
+                SELECT 2022, * FROM stg_HR.stg_transit_agency_employees_2022 UNION ALL
+                SELECT 2023, * FROM stg_HR.stg_transit_agency_employees_2023
+            ) ModEra
+            UNION ALL SELECT 2019, ntd_id, mode, tos, total_full_time_vehicle_maintenance_hours_worked, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2019
+            UNION ALL SELECT 2019, ntd_id, mode, tos, total_full_time_facility_maintenance_hours_worked, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2019
+            UNION ALL SELECT 2019, ntd_id, mode, tos, total_full_time_general_administration_hours_worked, 'FullTime', 'General Administration' FROM stg_HR.stg_transit_agency_employees_2019
+            UNION ALL SELECT 2019, ntd_id, mode, tos, total_part_time_vehicle_operations_hours_worked, 'PartTime', 'Vehicle Operations' FROM stg_HR.stg_transit_agency_employees_2019
+
+            -- Replicate structural mappings for subsequent active staging sets (2020-2023)
+            UNION ALL SELECT 2020, ntd_id, mode, tos, total_full_time_vehicle_maintenance_hours_worked, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2020
+            UNION ALL SELECT 2020, ntd_id, mode, tos, total_full_time_facility_maintenance_hours_worked, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2020
+            UNION ALL SELECT 2021, ntd_id, mode, tos, total_full_time_vehicle_maintenance_hours_worked, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2021
+            UNION ALL SELECT 2021, ntd_id, mode, tos, total_full_time_facility_maintenance_hours_worked, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2021
+            UNION ALL SELECT 2022, ntd_id, mode, tos, total_full_time_vehicle_maintenance_hours_worked, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2022
+            UNION ALL SELECT 2022, ntd_id, mode, tos, total_full_time_facility_maintenance_hours_worked, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2022
+            UNION ALL SELECT 2023, ntd_id, mode, tos, total_full_time_vehicle_maintenance_hours_worked, 'FullTime', 'Vehicle Maintenance' FROM stg_HR.stg_transit_agency_employees_2023
+            UNION ALL SELECT 2023, ntd_id, mode, tos, total_full_time_facility_maintenance_hours_worked, 'FullTime', 'Facility Maintenance' FROM stg_HR.stg_transit_agency_employees_2023
+        )
+        -- Extract unique intersection dimensions having explicit active hours coverage linked
+        SELECT DISTINCT ReportYear, ntd_id, mode AS ModeCode, tos AS TOSCode, Dept AS LaborCategory, EmpType AS EmploymentType
+        INTO #DistinctCoverageGrain
+        FROM cte_RawUnion
+        WHERE Hrs > 0;
+
+        -- 2. Populate Factless Table via Surrogate Key Resolvers
         INSERT INTO dw_HR.FactAgencyLaborCoverage (
             DateKey, AgencyKey, DepartmentKey, ModeKey, ServiceTypeKey, EmploymentTypeKey,
             ETL_InsertDate, ETL_BatchID, RecordSourceSystem
         )
         SELECT
-            -- Map to Date Dimension using Year-Level granularity
             ISNULL(d.DateKey, -1) AS DateKey,
-
-            -- Resolve Dimension Foreign Keys with Default -1 for missing relations
             ISNULL(a.AgencyKey, -1) AS AgencyKey,
             ISNULL(dept.DepartmentKey, -1) AS DepartmentKey,
             ISNULL(m.ModeKey, -1) AS ModeKey,
             ISNULL(s.ServiceTypeKey, -1) AS ServiceTypeKey,
             ISNULL(e.EmploymentTypeKey, -1) AS EmploymentTypeKey,
-
-            -- System Audit Metadata
             @LoadStartTime AS ETL_InsertDate,
             @BatchID AS ETL_BatchID,
             @SourceSystem AS RecordSourceSystem
-
-        FROM #StgDistinctCoverage src
-
-        -- Date Lookup based on matching Calendar Year
-        LEFT JOIN dw_HR.DimDate d
-            ON d.CalendarYear = src.ReportYear
-            AND d.IsYearLevel = 1
-
-        -- Agency Lookup based on Natural Business Keys
-        LEFT JOIN dw_HR.DimAgency a
-            ON src.NTD_ID = a.NTD_ID
-            AND a.IsCurrent = 1
-
-        -- Transit Mode Lookup
-        LEFT JOIN dw_HR.DimMode m
-            ON UPPER(LTRIM(RTRIM(src.ModeCode))) = m.ModeCode
-
-        -- Type of Service (TOS) Lookup
-        LEFT JOIN dw_HR.DimServiceType s
-            ON UPPER(LTRIM(RTRIM(src.TOSCode))) = s.TOSCode
-
-        -- Employment Type Lookup
-        LEFT JOIN dw_HR.DimEmploymentType e
-            ON e.EmploymentTypeName = LTRIM(RTRIM(src.EmploymentType))
-
-        -- Department Grouping Lookup
-        LEFT JOIN dw_HR.DimDepartment dept
-            ON dept.DepartmentName = LTRIM(RTRIM(src.LaborCategory));
+        FROM #DistinctCoverageGrain src
+        LEFT JOIN dw_HR.DimDate d ON d.CalendarYear = src.ReportYear AND d.IsYearLevel = 1
+        LEFT JOIN dw_HR.DimAgency a ON src.ntd_id = a.NTD_ID AND a.IsCurrent = 1
+        LEFT JOIN dw_HR.DimMode m ON UPPER(LTRIM(RTRIM(src.ModeCode))) = m.ModeCode
+        LEFT JOIN dw_HR.DimServiceType s ON UPPER(LTRIM(RTRIM(src.TOSCode))) = s.TOSCode
+        LEFT JOIN dw_HR.DimEmploymentType e ON e.EmploymentTypeName = LTRIM(RTRIM(src.EmploymentType))
+        LEFT JOIN dw_HR.DimDepartment dept ON dept.DepartmentName = LTRIM(RTRIM(src.LaborCategory));
 
         SET @RowsInserted = @@ROWCOUNT;
 
-        -- 5. Finalize Audit Record Log Status to Success
         UPDATE dw_transport.etl_load_audit
-        SET load_end_time = SYSDATETIME(),
-            rows_processed = @RowsInserted,
-            rows_inserted = @RowsInserted,
-            rows_deleted = @RowsDeleted,
-            status = 'SUCCESS'
+        SET load_end_time = SYSDATETIME(), rows_processed = @RowsInserted, rows_inserted = @RowsInserted, rows_deleted = @RowsDeleted, status = 'SUCCESS'
         WHERE audit_id = @AuditId;
 
         IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
@@ -530,28 +558,16 @@ BEGIN
         PRINT CONCAT('FactAgencyLaborCoverage (Factless) Loaded. Rows Inserted: ', @RowsInserted);
     END TRY
     BEGIN CATCH
-        -- Rollback context in case of runtime exceptions
-        IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
-
-        -- Log failure to operational metrics table
-        UPDATE dw_transport.etl_load_audit
-        SET load_end_time = SYSDATETIME(),
-            status = 'FAILED',
-            error_message = ERROR_MESSAGE()
-        WHERE audit_id = @AuditId;
-
-        RAISERROR('Critical Error in FactAgencyLaborCoverage ETL Pipeline.', 16, 1);
+        IF @TransactionStarted = 1 AND @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        UPDATE dw_transport.etl_load_audit SET load_end_time = SYSDATETIME(), status = 'FAILED', error_message = ERROR_MESSAGE() WHERE audit_id = @AuditId;
+        RAISERROR('Critical Error in FactAgencyLaborCoverage Factless Pipeline.', 16, 1);
     END CATCH
 END;
 GO
 
-
 -- ============================================================
 -- FILE:     09_load_FactJobPostingLifecycle_etl.sql
 -- SCHEMA:   dw_HR
--- DATABASE: TransportationDB
--- AUTHOR:   Parnian Ghaisari
 -- DESC:     ETL Pipeline Procedure for FactJobPostingLifecycle (Fact 4)
 --           Type: Accumulating Snapshot Fact Table
 --           Grain: One row per unique OpeningID lifecycle instance.
