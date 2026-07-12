@@ -1,605 +1,920 @@
--- ========================================
--- HR STAGING DATA LOAD SCRIPT
--- ========================================
--- This script loads data from raw_HR tables into stg_HR staging tables
--- with appropriate data cleaning, type conversion, and business logic
+-- ============================================================
+-- Clean out staging for a fresh load (Truncate and Load pattern)
+-- Mart: HR Mart (Kimball Methodology)
+-- ============================================================
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2014;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2015;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2016;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2017;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2018;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2019;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2020;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2021;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2022;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2023;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2024;
+TRUNCATE TABLE stg_HR.stg_transit_agency_employees_2025;
+TRUNCATE TABLE stg_HR.stg_job_openings;
 
-
-
-
--- stg_job_openings
---        <- synthetic_ntd_job_openings_2014_2024.xlsx
---        -> FactJobPosting
---
--- stg_employee_annual_snapshot
---        <- Employee files (2014-2024)
---        -> FactEmployeeSnapshot
---
--- stg_job_posting_performance
---        <- synthetic_ntd_job_openings_2014_2024.xlsx
---        -> FactJobPostingLifecycle
---
--- stg_job_role
---        <- synthetic_ntd_job_openings_2014_2024.xlsx
---        -> DimJobRole
---
--- stg_department
---        <- synthetic_ntd_job_openings_2014_2024.xlsx
---        -> DimDepartment
---
--- stg_employment_type
---        <- Employee files + Job Openings
---        -> DimEmploymentType
---
--- stg_labor_category
---        <- Employee files + Job Openings
---        -> DimLaborCategory
---
--- stg_agency_labor_coverage
---        <- Employee files + Job Openings
---        -> FactAgencyLaborCoverage
---
+-- ============================================================
+-- 1. Load Employees Data for Years 2014 - 2018
 -- ============================================================
 
 
+INSERT INTO stg_HR.stg_transit_agency_employees_2014 (
+    ntd_id, reporter_name, reporter_type, mode, tos,
+    full_time_vehicle_operations_hours, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours, full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_vehicle_operations_employee_count, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count, full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count,
+    part_time_vehicle_operations_hours, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours, part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_vehicle_operations_employee_count, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count, part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+)
+SELECT
+    -- Identification & Text Fields
+    LEFT(NULLIF(TRIM([5 Digit NTDID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Reporter Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
 
--- Step 1: Clear staging tables
--- ========================================
+    -- Full-Time Hours (Safe Double Cast for potential float representations)
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor]), 'None') AS FLOAT) AS INT),
 
-TRUNCATE TABLE stg_HR.stg_job_openings;
+    -- Full-Time Employee Counts (High-Precision Numeric)
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_1]), 'None') AS NUMERIC(18,2)),
 
-TRUNCATE TABLE stg_HR.stg_employee_annual_snapshot;
-TRUNCATE TABLE stg_HR.stg_job_posting_performance;
-TRUNCATE TABLE stg_HR.stg_labor_category;
-TRUNCATE TABLE stg_HR.stg_employment_type;
-TRUNCATE TABLE stg_HR.stg_job_role;
-TRUNCATE TABLE stg_HR.stg_agency_labor_coverage;
-TRUNCATE TABLE stg_HR.stg_department;
+    -- Part-Time Hours
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor_2]), 'None') AS FLOAT) AS INT),
 
--- Step 2: Load Job Openings
--- ========================================
--- ========================================
--- Load Job Openings Staging Table
--- ========================================
--- Grain:
--- One row per job opening
+    -- Part-Time Employee Counts
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_3]), 'None') AS NUMERIC(18,2))
+FROM raw_HR.raw_transit_agency_employees_2014;
 
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2015 (
+    ntd_id, reporter_name, reporter_type, mode, tos,
+    full_time_vehicle_operations_hours, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours, full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_vehicle_operations_employee_count, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count, full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count,
+    part_time_vehicle_operations_hours, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours, part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_vehicle_operations_employee_count, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count, part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+)
+SELECT
+    -- Identification & Text Fields
+    LEFT(NULLIF(TRIM([5 Digit NTDID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Reporter Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Full-Time Hours (Safe Double Cast for potential float representations)
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor]), 'None') AS FLOAT) AS INT),
+
+    -- Full-Time Employee Counts (High-Precision Numeric)
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_1]), 'None') AS NUMERIC(18,2)),
+
+    -- Part-Time Hours
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor_2]), 'None') AS FLOAT) AS INT),
+
+    -- Part-Time Employee Counts
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_3]), 'None') AS NUMERIC(18,2))
+FROM raw_HR.raw_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2016 (
+    ntd_id, reporter_name, reporter_type, mode, tos,
+    full_time_vehicle_operations_hours, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours, full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_vehicle_operations_employee_count, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count, full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count,
+    part_time_vehicle_operations_hours, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours, part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_vehicle_operations_employee_count, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count, part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+)
+SELECT
+    -- Identification & Text Fields
+    LEFT(NULLIF(TRIM([5 Digit NTDID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Reporter Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Full-Time Hours (Safe Double Cast for potential float representations)
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor]), 'None') AS FLOAT) AS INT),
+
+    -- Full-Time Employee Counts (High-Precision Numeric)
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_1]), 'None') AS NUMERIC(18,2)),
+
+    -- Part-Time Hours
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor_2]), 'None') AS FLOAT) AS INT),
+
+    -- Part-Time Employee Counts
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_3]), 'None') AS NUMERIC(18,2))
+FROM raw_HR.raw_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2017 (
+    ntd_id, reporter_name, reporter_type, mode, tos,
+    full_time_vehicle_operations_hours, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours, full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_vehicle_operations_employee_count, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count, full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count,
+    part_time_vehicle_operations_hours, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours, part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_vehicle_operations_employee_count, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count, part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+)
+SELECT
+    -- Identification & Text Fields
+    LEFT(NULLIF(TRIM([5 Digit NTDID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Reporter Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Full-Time Hours (Safe Double Cast for potential float representations)
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor]), 'None') AS FLOAT) AS INT),
+
+    -- Full-Time Employee Counts (High-Precision Numeric)
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_1]), 'None') AS NUMERIC(18,2)),
+
+    -- Part-Time Hours
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor_2]), 'None') AS FLOAT) AS INT),
+
+    -- Part-Time Employee Counts
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_3]), 'None') AS NUMERIC(18,2))
+FROM raw_HR.raw_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2018 (
+    ntd_id, reporter_name, reporter_type, mode, tos,
+    full_time_vehicle_operations_hours, full_time_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_hours, full_time_general_administration_hours, full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_vehicle_operations_employee_count, full_time_vehicle_maintenance_employee_count, full_time_non_vehicle_maintenance_employee_count, full_time_general_administration_employee_count, full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count,
+    part_time_vehicle_operations_hours, part_time_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_hours, part_time_general_administration_hours, part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_vehicle_operations_employee_count, part_time_vehicle_maintenance_employee_count, part_time_non_vehicle_maintenance_employee_count, part_time_general_administration_employee_count, part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+)
+SELECT
+    -- Identification & Text Fields
+    LEFT(NULLIF(TRIM([5 Digit NTDID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Reporter Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Full-Time Hours (Safe Double Cast for potential float representations)
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor]), 'None') AS FLOAT) AS INT),
+
+    -- Full-Time Employee Counts (High-Precision Numeric)
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_1]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_1]), 'None') AS NUMERIC(18,2)),
+
+    -- Part-Time Hours
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Operations_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([General Administration_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Operating Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Capital Labor_2]), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM([Total Labor_2]), 'None') AS FLOAT) AS INT),
+
+    -- Part-Time Employee Counts
+    TRY_CAST(NULLIF(TRIM([Vehicle Operations_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Non-vehicle Maintenance_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([General Administration_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Operating Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Capital Labor_3]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Labor_3]), 'None') AS NUMERIC(18,2))
+FROM raw_HR.raw_transit_agency_employees_2018;
+
+
+-- ============================================================
+-- 2. Load Employees Data for Years 2019 - 2025
+-- ============================================================
+
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2019 (
+    ntd_id, agency_name, reporter_type, reporting_module, mode, tos,
+    full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked, total_full_time_vehicle_operations_hours_worked,
+    full_time_operator_vehicle_maintenance_hours_worked, full_time_non_operator_vehicle_maintenance_hours_worked, total_full_time_vehicle_maintenance_hours_worked,
+    full_time_operator_facility_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, total_full_time_facility_maintenance_hours_worked,
+    full_time_operator_general_administration_hours_worked, full_time_non_operator_general_administration_hours_worked, total_full_time_general_administration_hours_worked,
+    total_full_time_operator_operating_labor_hours_worked, total_full_time_non_operator_operating_labor_hours_worked, total_full_time_operating_labor_hours_worked,
+    total_full_time_operator_capital_labor_hours_worked, total_full_time_non_operator_capital_labor_hours_worked, total_full_time_capital_labor_hours_worked,
+    total_full_time_operator_hours_worked, total_full_time_non_operator_hours_worked, total_full_time_hours_worked,
+    full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count, total_full_time_vehicle_operations_employee_count,
+    full_time_operator_vehicle_maintenance_employee_count, full_time_non_operator_vehicle_maintenance_employee_count, total_full_time_vehicle_maintenance_employee_count,
+    full_time_operator_facility_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, total_full_time_facility_maintenance_employee_count,
+    full_time_operator_general_administration_employee_count, full_time_non_operator_general_administration_employee_count, total_full_time_general_administration_employee_count,
+    total_full_time_operator_employee_count, total_full_time_non_operator_employee_count, total_full_time_employee_count,
+    part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked, total_part_time_vehicle_operations_hours_worked,
+    part_time_operator_vehicle_maintenance_hours_worked, part_time_non_operator_vehicle_maintenance_hours_worked, total_part_time_vehicle_maintenance_hours_worked,
+    part_time_operator_facility_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, total_part_time_facility_maintenance_hours_worked,
+    part_time_operator_general_administration_hours_worked, part_time_non_operator_general_administration_hours_worked, total_part_time_general_administration_hours_worked,
+    total_part_time_operator_hours_worked, total_part_time_non_operator_hours_worked, total_part_time_hours_worked,
+    part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count, total_part_time_vehicle_operations_employee_count,
+    part_time_operator_vehicle_maintenance_employee_count, part_time_non_operator_vehicle_maintenance_employee_count, total_part_time_vehicle_maintenance_employee_count,
+    part_time_operator_facility_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, total_part_time_facility_maintenance_employee_count,
+    part_time_operator_general_administration_employee_count, part_time_non_operator_general_administration_employee_count, total_part_time_general_administration_employee_count,
+    total_part_time_operator_employee_count, total_part_time_non_operator_employee_count, total_part_time_employee_count
+)
+SELECT
+    LEFT(NULLIF(TRIM([NTD ID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Agency Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Reporting Module]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Numeric Precision Mapping for 2019+ columns
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    -- Employee Counts
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    -- Part Time Sections
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2))
+
+FROM raw_HR.raw_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2020 (
+    ntd_id, agency_name, reporter_type, reporting_module, mode, tos,
+    full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked, total_full_time_vehicle_operations_hours_worked,
+    full_time_operator_vehicle_maintenance_hours_worked, full_time_non_operator_vehicle_maintenance_hours_worked, total_full_time_vehicle_maintenance_hours_worked,
+    full_time_operator_facility_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, total_full_time_facility_maintenance_hours_worked,
+    full_time_operator_general_administration_hours_worked, full_time_non_operator_general_administration_hours_worked, total_full_time_general_administration_hours_worked,
+    total_full_time_operator_operating_labor_hours_worked, total_full_time_non_operator_operating_labor_hours_worked, total_full_time_operating_labor_hours_worked,
+    total_full_time_operator_capital_labor_hours_worked, total_full_time_non_operator_capital_labor_hours_worked, total_full_time_capital_labor_hours_worked,
+    total_full_time_operator_hours_worked, total_full_time_non_operator_hours_worked, total_full_time_hours_worked,
+    full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count, total_full_time_vehicle_operations_employee_count,
+    full_time_operator_vehicle_maintenance_employee_count, full_time_non_operator_vehicle_maintenance_employee_count, total_full_time_vehicle_maintenance_employee_count,
+    full_time_operator_facility_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, total_full_time_facility_maintenance_employee_count,
+    full_time_operator_general_administration_employee_count, full_time_non_operator_general_administration_employee_count, total_full_time_general_administration_employee_count,
+    total_full_time_operator_employee_count, total_full_time_non_operator_employee_count, total_full_time_employee_count,
+    part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked, total_part_time_vehicle_operations_hours_worked,
+    part_time_operator_vehicle_maintenance_hours_worked, part_time_non_operator_vehicle_maintenance_hours_worked, total_part_time_vehicle_maintenance_hours_worked,
+    part_time_operator_facility_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, total_part_time_facility_maintenance_hours_worked,
+    part_time_operator_general_administration_hours_worked, part_time_non_operator_general_administration_hours_worked, total_part_time_general_administration_hours_worked,
+    total_part_time_operator_hours_worked, total_part_time_non_operator_hours_worked, total_part_time_hours_worked,
+    part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count, total_part_time_vehicle_operations_employee_count,
+    part_time_operator_vehicle_maintenance_employee_count, part_time_non_operator_vehicle_maintenance_employee_count, total_part_time_vehicle_maintenance_employee_count,
+    part_time_operator_facility_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, total_part_time_facility_maintenance_employee_count,
+    part_time_operator_general_administration_employee_count, part_time_non_operator_general_administration_employee_count, total_part_time_general_administration_employee_count,
+    total_part_time_operator_employee_count, total_part_time_non_operator_employee_count, total_part_time_employee_count
+)
+SELECT
+    LEFT(NULLIF(TRIM([NTD ID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Agency Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Reporting Module]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Numeric Precision Mapping for 2019+ columns
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    -- Employee Counts
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    -- Part Time Sections
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2))
+
+FROM raw_HR.raw_transit_agency_employees_2020;
+
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2021 (
+    ntd_id, agency_name, reporter_type, reporting_module, mode, tos,
+    full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked, total_full_time_vehicle_operations_hours_worked,
+    full_time_operator_vehicle_maintenance_hours_worked, full_time_non_operator_vehicle_maintenance_hours_worked, total_full_time_vehicle_maintenance_hours_worked,
+    full_time_operator_facility_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, total_full_time_facility_maintenance_hours_worked,
+    full_time_operator_general_administration_hours_worked, full_time_non_operator_general_administration_hours_worked, total_full_time_general_administration_hours_worked,
+    total_full_time_operator_operating_labor_hours_worked, total_full_time_non_operator_operating_labor_hours_worked, total_full_time_operating_labor_hours_worked,
+    total_full_time_operator_capital_labor_hours_worked, total_full_time_non_operator_capital_labor_hours_worked, total_full_time_capital_labor_hours_worked,
+    total_full_time_operator_hours_worked, total_full_time_non_operator_hours_worked, total_full_time_hours_worked,
+    full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count, total_full_time_vehicle_operations_employee_count,
+    full_time_operator_vehicle_maintenance_employee_count, full_time_non_operator_vehicle_maintenance_employee_count, total_full_time_vehicle_maintenance_employee_count,
+    full_time_operator_facility_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, total_full_time_facility_maintenance_employee_count,
+    full_time_operator_general_administration_employee_count, full_time_non_operator_general_administration_employee_count, total_full_time_general_administration_employee_count,
+    total_full_time_operator_employee_count, total_full_time_non_operator_employee_count, total_full_time_employee_count,
+    part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked, total_part_time_vehicle_operations_hours_worked,
+    part_time_operator_vehicle_maintenance_hours_worked, part_time_non_operator_vehicle_maintenance_hours_worked, total_part_time_vehicle_maintenance_hours_worked,
+    part_time_operator_facility_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, total_part_time_facility_maintenance_hours_worked,
+    part_time_operator_general_administration_hours_worked, part_time_non_operator_general_administration_hours_worked, total_part_time_general_administration_hours_worked,
+    total_part_time_operator_hours_worked, total_part_time_non_operator_hours_worked, total_part_time_hours_worked,
+    part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count, total_part_time_vehicle_operations_employee_count,
+    part_time_operator_vehicle_maintenance_employee_count, part_time_non_operator_vehicle_maintenance_employee_count, total_part_time_vehicle_maintenance_employee_count,
+    part_time_operator_facility_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, total_part_time_facility_maintenance_employee_count,
+    part_time_operator_general_administration_employee_count, part_time_non_operator_general_administration_employee_count, total_part_time_general_administration_employee_count,
+    total_part_time_operator_employee_count, total_part_time_non_operator_employee_count, total_part_time_employee_count
+)
+SELECT
+    LEFT(NULLIF(TRIM([NTD ID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Agency Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Reporting Module]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Numeric Precision Mapping for 2019+ columns
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    -- Employee Counts
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    -- Part Time Sections
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2))
+
+FROM raw_HR.raw_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2022 (
+    ntd_id, agency_name, reporter_type, reporting_module, mode, tos,
+    full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked, total_full_time_vehicle_operations_hours_worked,
+    full_time_operator_vehicle_maintenance_hours_worked, full_time_non_operator_vehicle_maintenance_hours_worked, total_full_time_vehicle_maintenance_hours_worked,
+    full_time_operator_facility_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, total_full_time_facility_maintenance_hours_worked,
+    full_time_operator_general_administration_hours_worked, full_time_non_operator_general_administration_hours_worked, total_full_time_general_administration_hours_worked,
+    total_full_time_operator_operating_labor_hours_worked, total_full_time_non_operator_operating_labor_hours_worked, total_full_time_operating_labor_hours_worked,
+    total_full_time_operator_capital_labor_hours_worked, total_full_time_non_operator_capital_labor_hours_worked, total_full_time_capital_labor_hours_worked,
+    total_full_time_operator_hours_worked, total_full_time_non_operator_hours_worked, total_full_time_hours_worked,
+    full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count, total_full_time_vehicle_operations_employee_count,
+    full_time_operator_vehicle_maintenance_employee_count, full_time_non_operator_vehicle_maintenance_employee_count, total_full_time_vehicle_maintenance_employee_count,
+    full_time_operator_facility_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, total_full_time_facility_maintenance_employee_count,
+    full_time_operator_general_administration_employee_count, full_time_non_operator_general_administration_employee_count, total_full_time_general_administration_employee_count,
+    total_full_time_operator_employee_count, total_full_time_non_operator_employee_count, total_full_time_employee_count,
+    part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked, total_part_time_vehicle_operations_hours_worked,
+    part_time_operator_vehicle_maintenance_hours_worked, part_time_non_operator_vehicle_maintenance_hours_worked, total_part_time_vehicle_maintenance_hours_worked,
+    part_time_operator_facility_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, total_part_time_facility_maintenance_hours_worked,
+    part_time_operator_general_administration_hours_worked, part_time_non_operator_general_administration_hours_worked, total_part_time_general_administration_hours_worked,
+    total_part_time_operator_hours_worked, total_part_time_non_operator_hours_worked, total_part_time_hours_worked,
+    part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count, total_part_time_vehicle_operations_employee_count,
+    part_time_operator_vehicle_maintenance_employee_count, part_time_non_operator_vehicle_maintenance_employee_count, total_part_time_vehicle_maintenance_employee_count,
+    part_time_operator_facility_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, total_part_time_facility_maintenance_employee_count,
+    part_time_operator_general_administration_employee_count, part_time_non_operator_general_administration_employee_count, total_part_time_general_administration_employee_count,
+    total_part_time_operator_employee_count, total_part_time_non_operator_employee_count, total_part_time_employee_count
+)
+SELECT
+    LEFT(NULLIF(TRIM([NTD ID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Agency Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Reporting Module]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Numeric Precision Mapping for 2019+ columns
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    -- Employee Counts
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    -- Part Time Sections
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2))
+
+FROM raw_HR.raw_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2023 (
+    ntd_id, agency_name, reporter_type, reporting_module, mode, tos,
+    full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked, total_full_time_vehicle_operations_hours_worked,
+    full_time_operator_vehicle_maintenance_hours_worked, full_time_non_operator_vehicle_maintenance_hours_worked, total_full_time_vehicle_maintenance_hours_worked,
+    full_time_operator_facility_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, total_full_time_facility_maintenance_hours_worked,
+    full_time_operator_general_administration_hours_worked, full_time_non_operator_general_administration_hours_worked, total_full_time_general_administration_hours_worked,
+    total_full_time_operator_operating_labor_hours_worked, total_full_time_non_operator_operating_labor_hours_worked, total_full_time_operating_labor_hours_worked,
+    total_full_time_operator_capital_labor_hours_worked, total_full_time_non_operator_capital_labor_hours_worked, total_full_time_capital_labor_hours_worked,
+    total_full_time_operator_hours_worked, total_full_time_non_operator_hours_worked, total_full_time_hours_worked,
+    full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count, total_full_time_vehicle_operations_employee_count,
+    full_time_operator_vehicle_maintenance_employee_count, full_time_non_operator_vehicle_maintenance_employee_count, total_full_time_vehicle_maintenance_employee_count,
+    full_time_operator_facility_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, total_full_time_facility_maintenance_employee_count,
+    full_time_operator_general_administration_employee_count, full_time_non_operator_general_administration_employee_count, total_full_time_general_administration_employee_count,
+    total_full_time_operator_employee_count, total_full_time_non_operator_employee_count, total_full_time_employee_count,
+    part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked, total_part_time_vehicle_operations_hours_worked,
+    part_time_operator_vehicle_maintenance_hours_worked, part_time_non_operator_vehicle_maintenance_hours_worked, total_part_time_vehicle_maintenance_hours_worked,
+    part_time_operator_facility_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, total_part_time_facility_maintenance_hours_worked,
+    part_time_operator_general_administration_hours_worked, part_time_non_operator_general_administration_hours_worked, total_part_time_general_administration_hours_worked,
+    total_part_time_operator_hours_worked, total_part_time_non_operator_hours_worked, total_part_time_hours_worked,
+    part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count, total_part_time_vehicle_operations_employee_count,
+    part_time_operator_vehicle_maintenance_employee_count, part_time_non_operator_vehicle_maintenance_employee_count, total_part_time_vehicle_maintenance_employee_count,
+    part_time_operator_facility_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, total_part_time_facility_maintenance_employee_count,
+    part_time_operator_general_administration_employee_count, part_time_non_operator_general_administration_employee_count, total_part_time_general_administration_employee_count,
+    total_part_time_operator_employee_count, total_part_time_non_operator_employee_count, total_part_time_employee_count
+)
+SELECT
+    LEFT(NULLIF(TRIM([NTD ID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Agency Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Reporting Module]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Numeric Precision Mapping for 2019+ columns
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    -- Employee Counts
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    -- Part Time Sections
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2))
+
+FROM raw_HR.raw_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2024 (
+    ntd_id, agency_name, reporter_type, reporting_module, mode, tos,
+    full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked, total_full_time_vehicle_operations_hours_worked,
+    full_time_operator_vehicle_maintenance_hours_worked, full_time_non_operator_vehicle_maintenance_hours_worked, total_full_time_vehicle_maintenance_hours_worked,
+    full_time_operator_facility_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, total_full_time_facility_maintenance_hours_worked,
+    full_time_operator_general_administration_hours_worked, full_time_non_operator_general_administration_hours_worked, total_full_time_general_administration_hours_worked,
+    total_full_time_operator_operating_labor_hours_worked, total_full_time_non_operator_operating_labor_hours_worked, total_full_time_operating_labor_hours_worked,
+    total_full_time_operator_capital_labor_hours_worked, total_full_time_non_operator_capital_labor_hours_worked, total_full_time_capital_labor_hours_worked,
+    total_full_time_operator_hours_worked, total_full_time_non_operator_hours_worked, total_full_time_hours_worked,
+    full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count, total_full_time_vehicle_operations_employee_count,
+    full_time_operator_vehicle_maintenance_employee_count, full_time_non_operator_vehicle_maintenance_employee_count, total_full_time_vehicle_maintenance_employee_count,
+    full_time_operator_facility_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, total_full_time_facility_maintenance_employee_count,
+    full_time_operator_general_administration_employee_count, full_time_non_operator_general_administration_employee_count, total_full_time_general_administration_employee_count,
+    total_full_time_operator_employee_count, total_full_time_non_operator_employee_count, total_full_time_employee_count,
+    part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked, total_part_time_vehicle_operations_hours_worked,
+    part_time_operator_vehicle_maintenance_hours_worked, part_time_non_operator_vehicle_maintenance_hours_worked, total_part_time_vehicle_maintenance_hours_worked,
+    part_time_operator_facility_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, total_part_time_facility_maintenance_hours_worked,
+    part_time_operator_general_administration_hours_worked, part_time_non_operator_general_administration_hours_worked, total_part_time_general_administration_hours_worked,
+    total_part_time_operator_hours_worked, total_part_time_non_operator_hours_worked, total_part_time_hours_worked,
+    part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count, total_part_time_vehicle_operations_employee_count,
+    part_time_operator_vehicle_maintenance_employee_count, part_time_non_operator_vehicle_maintenance_employee_count, total_part_time_vehicle_maintenance_employee_count,
+    part_time_operator_facility_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, total_part_time_facility_maintenance_employee_count,
+    part_time_operator_general_administration_employee_count, part_time_non_operator_general_administration_employee_count, total_part_time_general_administration_employee_count,
+    total_part_time_operator_employee_count, total_part_time_non_operator_employee_count, total_part_time_employee_count
+)
+SELECT
+    LEFT(NULLIF(TRIM([NTD ID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Agency Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Reporting Module]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Numeric Precision Mapping for 2019+ columns
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    -- Employee Counts
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    -- Part Time Sections
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2))
+
+FROM raw_HR.raw_transit_agency_employees_2024;
+
+
+INSERT INTO stg_HR.stg_transit_agency_employees_2019 (
+    ntd_id, agency_name, reporter_type, reporting_module, mode, tos,
+    full_time_operator_vehicle_operations_hours_worked, full_time_non_operator_vehicle_operations_hours_worked, total_full_time_vehicle_operations_hours_worked,
+    full_time_operator_vehicle_maintenance_hours_worked, full_time_non_operator_vehicle_maintenance_hours_worked, total_full_time_vehicle_maintenance_hours_worked,
+    full_time_operator_facility_maintenance_hours_worked, full_time_non_operator_facility_maintenance_hours_worked, total_full_time_facility_maintenance_hours_worked,
+    full_time_operator_general_administration_hours_worked, full_time_non_operator_general_administration_hours_worked, total_full_time_general_administration_hours_worked,
+    total_full_time_operator_operating_labor_hours_worked, total_full_time_non_operator_operating_labor_hours_worked, total_full_time_operating_labor_hours_worked,
+    total_full_time_operator_capital_labor_hours_worked, total_full_time_non_operator_capital_labor_hours_worked, total_full_time_capital_labor_hours_worked,
+    total_full_time_operator_hours_worked, total_full_time_non_operator_hours_worked, total_full_time_hours_worked,
+    full_time_operator_vehicle_operations_employee_count, full_time_non_operator_vehicle_operations_employee_count, total_full_time_vehicle_operations_employee_count,
+    full_time_operator_vehicle_maintenance_employee_count, full_time_non_operator_vehicle_maintenance_employee_count, total_full_time_vehicle_maintenance_employee_count,
+    full_time_operator_facility_maintenance_employee_count, full_time_non_operator_facility_maintenance_employee_count, total_full_time_facility_maintenance_employee_count,
+    full_time_operator_general_administration_employee_count, full_time_non_operator_general_administration_employee_count, total_full_time_general_administration_employee_count,
+    total_full_time_operator_employee_count, total_full_time_non_operator_employee_count, total_full_time_employee_count,
+    part_time_operator_vehicle_operations_hours_worked, part_time_non_operator_vehicle_operations_hours_worked, total_part_time_vehicle_operations_hours_worked,
+    part_time_operator_vehicle_maintenance_hours_worked, part_time_non_operator_vehicle_maintenance_hours_worked, total_part_time_vehicle_maintenance_hours_worked,
+    part_time_operator_facility_maintenance_hours_worked, part_time_non_operator_facility_maintenance_hours_worked, total_part_time_facility_maintenance_hours_worked,
+    part_time_operator_general_administration_hours_worked, part_time_non_operator_general_administration_hours_worked, total_part_time_general_administration_hours_worked,
+    total_part_time_operator_hours_worked, total_part_time_non_operator_hours_worked, total_part_time_hours_worked,
+    part_time_operator_vehicle_operations_employee_count, part_time_non_operator_vehicle_operations_employee_count, total_part_time_vehicle_operations_employee_count,
+    part_time_operator_vehicle_maintenance_employee_count, part_time_non_operator_vehicle_maintenance_employee_count, total_part_time_vehicle_maintenance_employee_count,
+    part_time_operator_facility_maintenance_employee_count, part_time_non_operator_facility_maintenance_employee_count, total_part_time_facility_maintenance_employee_count,
+    part_time_operator_general_administration_employee_count, part_time_non_operator_general_administration_employee_count, total_part_time_general_administration_employee_count,
+    total_part_time_operator_employee_count, total_part_time_non_operator_employee_count, total_part_time_employee_count
+)
+SELECT
+    LEFT(NULLIF(TRIM([NTD ID]), 'None'), 50),
+    LEFT(NULLIF(TRIM([Agency Name]), 'None'), 255),
+    LEFT(NULLIF(TRIM([Reporter Type]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Reporting Module]), 'None'), 100),
+    LEFT(NULLIF(TRIM([Mode]), 'None'), 50),
+    LEFT(NULLIF(TRIM([TOS]), 'None'), 50),
+
+    -- Numeric Precision Mapping for 2019+ columns
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Facility Maintenance) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (General Administration) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Operating Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Capital Labor) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Total Full Time Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Non-Operator Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    -- Employee Counts
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Operations) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Full Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Full Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Full Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+
+    -- Part Time Sections
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Operations) Hours Worked]), 'None') AS NUMERIC(18,2)),
+
+    TRY_CAST(NULLIF(TRIM([Part Time Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Part Time Non-Operator (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM([Total Part Time (Vehicle Maintenance) Employee Count]), 'None') AS NUMERIC(18,2))
+
+FROM raw_HR.raw_transit_agency_employees_2025;
+
+
+-- ============================================================
+-- 3. Load Job Openings Data (Transaction Source)
+-- ============================================================
 INSERT INTO stg_HR.stg_job_openings (
-    opening_id,
-    ntd_id,
-    agency_name,
-
-    position_title,
-
-    employment_type,
-    labor_category,
-    department,
-
-    mode,
-    service_type,
-
-    posting_date,
-    closing_date,
-    filled_date,
-
-    open_positions,
-    hired_count,
-
-    salary_min_hourly,
-    salary_max_hourly,
-
-    posting_status,
-    vacancy_reason,
-
-    location_city,
-    location_state
+    OpeningID, PostingDate, PostingDateKey, ReportYear, NTD_ID, AgencyName,
+    ReporterType, ReportingModule, OrganizationType, City, State, Region,
+    ModeCode, ModeName, TOS, TypeOfServiceName, NTDLaborObjectClass,
+    OperatorStatus, EmploymentType, PositionTitle, Department, OpenPositions,
+    SalaryMinHourly, SalaryMaxHourly, SalaryMidHourly, SalaryType,
+    PostingStatus, ClosingDate, FilledDate, DaysOpen, HiredCount,
+    VacancyReason, SourceSystem, SyntheticDataFlag, SourceBasisURL, SourceBasisNote
 )
-
 SELECT
-
-    -- 1. Identifiers
-    LEFT(NULLIF(TRIM([OpeningID]), ''), 100),
-
-    LEFT(NULLIF(TRIM([NTD_ID]), ''), 50),
-
-    LEFT(NULLIF(TRIM([AgencyName]), ''), 255),
-
-
-    -- 2. Position Information
-    LEFT(NULLIF(TRIM([PositionTitle]), ''), 255),
-
-    LEFT(NULLIF(TRIM([EmploymentType]), ''), 100),
-
-    LEFT(NULLIF(TRIM([NTDLaborObjectClass]), ''), 100),
-
-    LEFT(NULLIF(TRIM([Department]), ''), 255),
-
-
-    -- 3. Transportation Classification
-    LEFT(NULLIF(TRIM([ModeName]), ''), 20),
-
-    LEFT(NULLIF(TRIM([TypeOfServiceName]), ''), 100),
-
-
-    -- 4. Dates
-    TRY_CAST(NULLIF(TRIM([PostingDate]), '') AS DATE),
-
-    TRY_CAST(NULLIF(TRIM([ClosingDate]), '') AS DATE),
-
-    TRY_CAST(NULLIF(TRIM([FilledDate]), '') AS DATE),
-
-
-    -- 5. Counts
-    TRY_CAST(
-        TRY_CAST(NULLIF(TRIM([OpenPositions]), '') AS FLOAT)
-        AS INTEGER
-    ),
-
-    TRY_CAST(
-        TRY_CAST(NULLIF(TRIM([HiredCount]), '') AS FLOAT)
-        AS INTEGER
-    ),
-
-
-    -- 6. Salary
-    TRY_CAST(
-        NULLIF(TRIM([SalaryMinHourly]), '')
-        AS NUMERIC(18,2)
-    ),
-
-    TRY_CAST(
-        NULLIF(TRIM([SalaryMaxHourly]), '')
-        AS NUMERIC(18,2)
-    ),
-
-
-    -- 7. Status
-    LEFT(NULLIF(TRIM([PostingStatus]), ''), 50),
-
-    LEFT(NULLIF(TRIM([VacancyReason]), ''), 255),
-
-
-    -- 8. Location
-    LEFT(NULLIF(TRIM([City]), ''), 100),
-
-    LEFT(NULLIF(TRIM([State]), ''), 20)
-
-
-FROM raw_HR.job_openings
-
-WHERE NULLIF(TRIM([OpeningID]), '') IS NOT NULL;
-
--- Step 3: Load Employee Annual Snapshots
--- ========================================
--- Grain:
--- One row per year per agency per labor category
--- per employment type per mode per service type
-
--- ========================================
--- Load Employee Annual Snapshot Staging
--- ========================================
--- Grain:
--- One row per year per agency
--- per labor category
--- per employment type
--- per mode per service type
-
-INSERT INTO stg_HR.stg_employee_annual_snapshot
-(
-    snapshot_id,
-
-    snapshot_year,
-
-    ntd_id,
-    agency_name,
-
-    labor_category,
-
-    mode,
-    service_type,
-
-    employment_type,
-
-    department,
-
-    employee_count,
-
-    average_hourly_wage,
-
-    total_hours_worked
-)
-
-SELECT
-
-    -- 1. Snapshot Identifier
-    CONCAT(
-        LEFT(NULLIF(TRIM([NTD_ID]), ''), 50),
-        '_',
-        CAST([ReportYear] AS VARCHAR(4)),
-        '_',
-        LEFT(NULLIF(TRIM([LaborCategory]), ''), 100)
-    ),
-
-
-    -- 2. Annual Snapshot Year
-    [ReportYear],
-
-
-    -- 3. Agency
-    LEFT(NULLIF(TRIM([NTD_ID]), ''), 50),
-
-    LEFT(NULLIF(TRIM([AgencyName]), ''), 255),
-
-
-    -- 4. Labor Classification
-    LEFT(NULLIF(TRIM([LaborCategory]), ''), 100),
-
-
-    -- 5. Transportation
-    LEFT(NULLIF(TRIM([Mode]), ''), 20),
-
-    LEFT(NULLIF(TRIM([ServiceType]), ''), 100),
-
-
-    -- 6. Employment Type
-    LEFT(NULLIF(TRIM([EmploymentType]), ''), 100),
-
-
-    -- 7. Department
-    LEFT(NULLIF(TRIM([Department]), ''), 255),
-
-
-    -- 8. Employee Count
-    TRY_CAST(
-        TRY_CAST(NULLIF(TRIM([EmployeeCount]), '') AS FLOAT)
-        AS INTEGER
-    ),
-
-
-    -- 9. Wage
-    TRY_CAST(
-        NULLIF(TRIM([AverageHourlyWage]), '')
-        AS NUMERIC(18,2)
-    ),
-
-
-    -- 10. Hours
-    TRY_CAST(
-        NULLIF(TRIM([TotalHoursWorked]), '')
-        AS NUMERIC(18,2)
-    )
-
-
-FROM raw_HR.employee_annual_snapshot
-
-
-WHERE NULLIF(TRIM([NTD_ID]), '') IS NOT NULL
-AND [ReportYear] IS NOT NULL;
--- Step 5: Load Job Posting Performance
--- ========================================
--- ========================================
--- Load Job Posting Performance Staging
--- ========================================
--- Grain:
--- One row per OpeningID
--- Used for FactJobPostingLifecycle
-
-INSERT INTO stg_HR.stg_job_posting_performance
-(
-    opening_id,
-
-    ntd_id,
-    agency_name,
-
-    position_title,
-
-    employment_type,
-
-    labor_category,
-
-    posting_date,
-    closing_date,
-    filled_date,
-
-    days_open,
-
-    open_positions,
-    hired_count,
-
-    mode,
-    service_type,
-
-    salary_midpoint_hourly,
-
-    posting_status
-)
-
-SELECT
-
-    -- 1. Identifiers
-    LEFT(NULLIF(TRIM([OpeningID]), ''), 100),
-
-    LEFT(NULLIF(TRIM([NTD_ID]), ''), 50),
-
-    LEFT(NULLIF(TRIM([AgencyName]), ''), 255),
-
-
-    -- 2. Position
-    LEFT(NULLIF(TRIM([PositionTitle]), ''), 255),
-
-    LEFT(NULLIF(TRIM([EmploymentType]), ''), 100),
-
-    LEFT(NULLIF(TRIM([NTDLaborObjectClass]), ''), 100),
-
-
-    -- 3. Dates
-    TRY_CAST(NULLIF(TRIM([PostingDate]), '') AS DATE),
-
-    TRY_CAST(NULLIF(TRIM([ClosingDate]), '') AS DATE),
-
-    TRY_CAST(NULLIF(TRIM([FilledDate]), '') AS DATE),
-
-
-    -- 4. Days Open
-    CASE
-        WHEN TRY_CAST(NULLIF(TRIM([PostingDate]), '') AS DATE) IS NULL
-            THEN NULL
-
-        WHEN TRY_CAST(NULLIF(TRIM([FilledDate]), '') AS DATE) IS NOT NULL
-            THEN DATEDIFF(
-                DAY,
-                TRY_CAST(NULLIF(TRIM([PostingDate]), '') AS DATE),
-                TRY_CAST(NULLIF(TRIM([FilledDate]), '') AS DATE)
-            )
-
-        WHEN TRY_CAST(NULLIF(TRIM([ClosingDate]), '') AS DATE) IS NOT NULL
-            THEN DATEDIFF(
-                DAY,
-                TRY_CAST(NULLIF(TRIM([PostingDate]), '') AS DATE),
-                TRY_CAST(NULLIF(TRIM([ClosingDate]), '') AS DATE)
-            )
-
-        ELSE NULL
-    END,
-
-
-    -- 5. Hiring Metrics
-    TRY_CAST(
-        TRY_CAST(NULLIF(TRIM([OpenPositions]), '') AS FLOAT)
-        AS INTEGER
-    ),
-
-    TRY_CAST(
-        TRY_CAST(NULLIF(TRIM([HiredCount]), '') AS FLOAT)
-        AS INTEGER
-    ),
-
-
-    -- 6. Transportation Classification
-    LEFT(NULLIF(TRIM([ModeName]), ''), 20),
-
-    LEFT(NULLIF(TRIM([TypeOfServiceName]), ''), 100),
-
-
-    -- 7. Salary Midpoint
-    CASE
-        WHEN TRY_CAST(NULLIF(TRIM([SalaryMinHourly]), '') AS NUMERIC(18,2)) IS NULL
-          OR TRY_CAST(NULLIF(TRIM([SalaryMaxHourly]), '') AS NUMERIC(18,2)) IS NULL
-
-        THEN NULL
-
-        ELSE
-        (
-            TRY_CAST(NULLIF(TRIM([SalaryMinHourly]), '') AS NUMERIC(18,2))
-            +
-            TRY_CAST(NULLIF(TRIM([SalaryMaxHourly]), '') AS NUMERIC(18,2))
-        ) / 2
-    END,
-
-
-    -- 8. Status
-    LEFT(NULLIF(TRIM([PostingStatus]), ''), 50)
-
-
-FROM raw_HR.job_openings
-
-
-WHERE NULLIF(TRIM([OpeningID]), '') IS NOT NULL;
--- Step 6: Load Labor Categories (Reference Data)
--- ========================================
-
--- ========================================
--- Load Labor Category Staging
--- ========================================
--- Grain:
--- One row per unique labor category
-
-INSERT INTO stg_HR.stg_labor_category
-(
-    labor_category_code,
-    labor_category_name,
-    is_active
-)
-SELECT DISTINCT
-
-    -- Use labor category value as code
-    LEFT(
-        NULLIF(TRIM([NTDLaborObjectClass]), ''),
-        50
-    ),
-    -- Labor category name
-    LEFT(
-        NULLIF(TRIM([NTDLaborObjectClass]), ''),
-        255
-    ),
-    -- Active flag
-    CAST(1 AS BIT)
-FROM raw_HR.job_openings
-
-
-WHERE NULLIF(TRIM([NTDLaborObjectClass]), '') IS NOT NULL;
-
--- Load Employment Type Staging
--- ========================================
--- Grain:
--- One row per unique employment type
-
-INSERT INTO stg_HR.stg_employment_type
-(
-    employment_type_code,
-    employment_type_name,
-    employment_type_description,
-    is_full_time,
-    is_active
-)
-
-SELECT DISTINCT
-    -- Employment type code
-    LEFT(
-        NULLIF(TRIM([EmploymentType]), ''),
-        50
-    ),
-    -- Employment type name
-    LEFT(
-        NULLIF(TRIM([EmploymentType]), ''),
-        100
-    ),
-    -- No description available in source
-    NULL,
-    -- Full time flag derived from value
-    CASE
-        WHEN UPPER(TRIM([EmploymentType])) LIKE '%FULL%'
-            THEN CAST(1 AS BIT)
-
-        ELSE CAST(0 AS BIT)
-    END,
-    -- All source values are considered active
-    CAST(1 AS BIT)
-FROM raw_HR.job_openings
-WHERE NULLIF(TRIM([EmploymentType]), '') IS NOT NULL;
--- ========================================
--- Load Job Role Staging
--- ========================================
--- Grain:
--- One row per unique position title
-
-INSERT INTO stg_HR.stg_job_role
-(
-    position_title,
-    labor_category,
-    employment_type,
-    is_active
-)
-
-SELECT DISTINCT
-
-    -- Position title
-    LEFT(NULLIF(TRIM([PositionTitle]), ''), 255),
-
-
-    -- Labor category
-    LEFT(NULLIF(TRIM([NTDLaborObjectClass]), ''), 100),
-
-
-    -- Employment type
-    LEFT(NULLIF(TRIM([EmploymentType]), ''), 100),
-
-
-    -- Active flag
-    CAST(1 AS BIT)
-
-
-FROM raw_HR.job_openings
-
-
-WHERE NULLIF(TRIM([PositionTitle]), '') IS NOT NULL;
--- Step 10: Load Agency Labor Coverage
--- ========================================
-
-INSERT INTO stg_HR.stg_agency_labor_coverage (
-    coverage_id,
-    ntd_id,
-    agency_name,
-    labor_category,
-    mode,
-    service_type,
-    employment_type,
-    effective_date,
-    end_date,
-    is_active
-)
-SELECT DISTINCT
-    CONCAT(
-        LEFT(NULLIF(TRIM([NTD_ID]), ''), 50), '_',
-        LEFT(NULLIF(TRIM([LaborCategory]), ''), 50), '_',
-        LEFT(NULLIF(TRIM([Mode]), ''), 20)
-    ),
-    LEFT(NULLIF(TRIM([NTD_ID]), ''), 50),
-    LEFT(NULLIF(TRIM([AgencyName]), ''), 255),
-    LEFT(NULLIF(TRIM([LaborCategory]), ''), 100),
-    LEFT(NULLIF(TRIM([Mode]), ''), 20),
-    LEFT(NULLIF(TRIM([ServiceType]), ''), 100),
-    LEFT(NULLIF(TRIM([EmploymentType]), ''), 100),
-    TRY_CAST(NULLIF(TRIM([EffectiveDate]), '') AS DATE),
-    TRY_CAST(NULLIF(TRIM([EndDate]), '') AS DATE),
-    CAST(NULLIF(TRIM([IsActive]), '') AS BIT)
-
-FROM raw_HR.agency_labor_coverage
-WHERE NULLIF(TRIM([NTD_ID]), '') IS NOT NULL;
--- ========================================
--- Load Department Staging
--- ========================================
--- Grain:
--- One row per unique department
-
-INSERT INTO stg_HR.stg_department
-(
-    department_code,
-    department_name,
-    ntd_labor_object_class,
-    is_active
-)
-
-SELECT DISTINCT
-
-    -- Department code
-    LEFT(
-        NULLIF(TRIM([Department]), ''),
-        50
-    ),
-    -- Department name
-    LEFT(
-        NULLIF(TRIM([Department]), ''),
-        255
-    ),
-    -- Labor object classification
-    LEFT(
-        NULLIF(TRIM([NTDLaborObjectClass]), ''),
-        100
-    ),
-    -- Active flag
-    CAST(1 AS BIT)
-FROM raw_HR.job_openings
-WHERE NULLIF(TRIM([Department]), '') IS NOT NULL;
--- ========================================
--- Load Complete
--- ========================================
--- Summary statistics (uncomment to view after successful load):
---
--- SELECT 'stg_job_openings' AS table_name, COUNT(*) AS row_count FROM stg_HR.stg_job_openings
--- UNION ALL
-
--- SELECT 'stg_employee_annual_snapshot', COUNT(*) FROM stg_HR.stg_employee_annual_snapshot
--- UNION ALL
--- SELECT 'stg_job_posting_performance', COUNT(*) FROM stg_HR.stg_job_posting_performance
--- UNION ALL
--- SELECT 'stg_labor_category', COUNT(*) FROM stg_HR.stg_labor_category
--- UNION ALL
--- SELECT 'stg_employment_type', COUNT(*) FROM stg_HR.stg_employment_type
--- UNION ALL
--- SELECT 'stg_job_role', COUNT(*) FROM stg_HR.stg_job_role
--- UNION ALL
--- SELECT 'stg_agency_labor_coverage', COUNT(*) FROM stg_HR.stg_agency_labor_coverage
--- UNION ALL
--- SELECT 'stg_department', COUNT(*) FROM stg_HR.stg_department
--- ORDER BY table_name;
+    LEFT(NULLIF(TRIM(OpeningID), 'None'), 50),
+    TRY_CAST(NULLIF(TRIM(PostingDate), 'None') AS DATE),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM(PostingDateKey), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM(ReportYear), 'None') AS FLOAT) AS INT),
+    LEFT(NULLIF(TRIM(NTD_ID), 'None'), 50),
+    LEFT(NULLIF(TRIM(AgencyName), 'None'), 255),
+    LEFT(NULLIF(TRIM(ReporterType), 'None'), 100),
+    LEFT(NULLIF(TRIM(ReportingModule), 'None'), 100),
+    LEFT(NULLIF(TRIM(OrganizationType), 'None'), 255),
+    LEFT(NULLIF(TRIM(City), 'None'), 100),
+    LEFT(NULLIF(TRIM(State), 'None'), 50),
+    LEFT(NULLIF(TRIM(Region), 'None'), 50),
+    LEFT(NULLIF(TRIM(ModeCode), 'None'), 20),
+    LEFT(NULLIF(TRIM(ModeName), 'None'), 100),
+    LEFT(NULLIF(TRIM(TOS), 'None'), 20),
+    LEFT(NULLIF(TRIM(TypeOfServiceName), 'None'), 100),
+    LEFT(NULLIF(TRIM(NTDLaborObjectClass), 'None'), 100),
+    LEFT(NULLIF(TRIM(OperatorStatus), 'None'), 50),
+    LEFT(NULLIF(TRIM(EmploymentType), 'None'), 50),
+    LEFT(NULLIF(TRIM(PositionTitle), 'None'), 255),
+    LEFT(NULLIF(TRIM(Department), 'None'), 255),
+
+    TRY_CAST(TRY_CAST(NULLIF(TRIM(OpenPositions), 'None') AS FLOAT) AS INT),
+    TRY_CAST(NULLIF(TRIM(SalaryMinHourly), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM(SalaryMaxHourly), 'None') AS NUMERIC(18,2)),
+    TRY_CAST(NULLIF(TRIM(SalaryMidHourly), 'None') AS NUMERIC(18,2)),
+
+    LEFT(NULLIF(TRIM(SalaryType), 'None'), 50),
+    LEFT(NULLIF(TRIM(PostingStatus), 'None'), 50),
+    TRY_CAST(NULLIF(TRIM(ClosingDate), 'None') AS DATE),
+    TRY_CAST(NULLIF(TRIM(FilledDate), 'None') AS DATE),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM(DaysOpen), 'None') AS FLOAT) AS INT),
+    TRY_CAST(TRY_CAST(NULLIF(TRIM(HiredCount), 'None') AS FLOAT) AS INT),
+
+    LEFT(NULLIF(TRIM(VacancyReason), 'None'), 255),
+    LEFT(NULLIF(TRIM(SourceSystem), 'None'), 100),
+    LEFT(NULLIF(TRIM(SyntheticDataFlag), 'None'), 5),
+    LEFT(NULLIF(TRIM(SourceBasisURL), 'None'), 500),
+    LEFT(NULLIF(TRIM(SourceBasisNote), 'None'), 500)
+FROM raw_HR.raw_job_openings;
