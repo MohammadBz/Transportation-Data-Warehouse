@@ -144,20 +144,30 @@ GO
 -- ============================================================
 -- 2. FactEmployeeSnapshot
 --
---GRAIN:
---One row per
---Year × Agency × Department × Job Role
---× Employment Type × Mode × Service Type
+-- GRAIN:
+-- One row per Year × Agency × Department × Job Role
+-- × Employment Type × Mode × Service Type
 --
 -- MEASURES (Additive):
 --   * EmployeeCount: Headcount at snapshot date (semi-additive: time-sensitive)
---   * AverageHourlyWage: Mean wage for period (semi-additive: non-additive)
 --   * TotalHoursWorked: Cumulative hours (additive within period)
---   * TotalOvertimeHours: Cumulative OT hours (additive within period)
---   * TotalPaidHours: Total paid (additive within period)
+--   * VehicleOpsHours: Vehicle operations hours (additive)
+--   * VehicleMaintHours: Vehicle maintenance hours (additive)
+--   * AdminHours: General administration hours (additive)
+--   * CapitalHours: Capital labor hours (additive)
+--   * OperatingHours: Total operating hours (additive)
+--   * PartTimeHours: Part-time hours (additive)
+--   * PartTimeEmployees: Part-time headcount (semi-additive)
 --
--- FACT SOURCE: stg_employee_annual_snapshot (one snapshot = one row)
---              Aggregated from detailed employee records
+-- DERIVED MEASURES (Calculated in ETL):
+--   * HoursPerEmployee: Efficiency metric (non-additive)
+--
+-- MEASURES NOT IN SOURCE (Reserved for Future):
+--   * AverageHourlyWage: Not available in NTD data (NULL)
+--   * TotalOvertimeHours: Not available in NTD data (NULL)
+--   * TotalPaidHours: Not available in NTD data (NULL)
+--
+-- FACT SOURCE: stg_employee_annual_snapshot
 -- ============================================================
 IF OBJECT_ID('dw_HR.FactEmployeeSnapshot', 'U') IS NOT NULL
     DROP TABLE dw_HR.FactEmployeeSnapshot;
@@ -165,97 +175,126 @@ GO
 
 CREATE TABLE dw_HR.FactEmployeeSnapshot (
 
-    -- Surrogate fact key
+    -- ============================================================
+    -- SURROGATE KEY
+    -- ============================================================
     SnapshotFactKey             BIGINT          NOT NULL IDENTITY(1,1),
-    -- Foreign keys to dimensions
-    DateKey                     INT             NOT NULL,
-    AgencyKey                   INT             NOT NULL,
-    ModeKey                     INT             NOT NULL,
-    ServiceTypeKey              INT             NOT NULL,
-    EmploymentTypeKey           INT             NOT NULL,
-    DepartmentKey               INT             NOT NULL,
-    -- Optional dimension reference
-    JobRoleKey                  INT             NULL,
-    -- Measures
-    -- Annual workforce snapshot measures
 
-    EmployeeCount               INT             NULL,
-    AverageHourlyWage           DECIMAL(18,2)   NULL,
-    TotalHoursWorked            DECIMAL(18,2)   NULL,
-    -- --------------------------------------------------------
-    -- Constraints
-    -- --------------------------------------------------------
+    -- ============================================================
+    -- FOREIGN KEYS TO DIMENSIONS
+    -- ============================================================
+    DateKey                     INT             NOT NULL,   -- Year dimension
+    AgencyKey                   INT             NOT NULL,   -- Agency dimension
+    ModeKey                     INT             NOT NULL,   -- Mode dimension (MB, DR, HR, etc.)
+    ServiceTypeKey              INT             NOT NULL,   -- Service type (DO, etc.)
+    EmploymentTypeKey           INT             NOT NULL,   -- Full Time / Part Time
+    DepartmentKey               INT             NOT NULL,   -- Department (Vehicle Ops, Maint, Admin)
+    JobRoleKey                  INT             NULL,       -- Operator / Non-Operator / Unknown (2017)
 
+    -- ============================================================
+    -- MEASURES - FROM SOURCE
+    -- ============================================================
+
+    -- Primary workforce measures
+    EmployeeCount               DECIMAL(18,2)   NULL,       -- Total employees (can be FTE with decimals)
+
+    -- Department breakdowns (for detailed analysis)
+    VehicleOpsHours             DECIMAL(18,2)   NULL,       -- Vehicle operations hours
+    VehicleMaintHours           DECIMAL(18,2)   NULL,       -- Vehicle maintenance hours
+    AdminHours                  DECIMAL(18,2)   NULL,       -- General administration hours
+
+    -- Capital vs Operating split
+    CapitalHours                DECIMAL(18,2)   NULL,       -- Capital labor hours
+    OperatingHours              DECIMAL(18,2)   NULL,       -- Total operating hours
+
+    -- Part-time indicators
+    PartTimeHours               DECIMAL(18,2)   NULL,       -- Part-time hours
+    PartTimeEmployees           DECIMAL(18,2)   NULL,       -- Part-time employee count
+
+    -- ============================================================
+    -- MEASURES - DERIVED (Calculated in ETL)
+    -- ============================================================
+    HoursPerEmployee            DECIMAL(18,4)   NULL,       -- Efficiency: TotalHoursWorked / EmployeeCount
+
+    -- ============================================================
+    -- MEASURES - RESERVED FOR FUTURE (Not in NTD source)
+    -- ============================================================
+    AverageHourlyWage           DECIMAL(18,2)   NULL,       -- NOT IN SOURCE - Reserved for future
+    TotalOvertimeHours          DECIMAL(18,2)   NULL,       -- NOT IN SOURCE - Reserved for future
+    TotalPaidHours              DECIMAL(18,2)   NULL,       -- NOT IN SOURCE - Reserved for future
+
+    -- ============================================================
+    -- ETL METADATA (Optional but recommended)
+    -- ============================================================
+    CreatedDate                 DATETIME        NOT NULL    DEFAULT GETDATE(),
+    ModifiedDate                DATETIME        NULL,
+    SourceSystem                VARCHAR(50)     NULL,       -- 'NTD_2017' or 'NTD_2019'
+    SourceFile                  VARCHAR(100)    NULL        -- Original file name
+
+    -- ============================================================
+    -- CONSTRAINTS
+    -- ============================================================
     CONSTRAINT PK_FactEmployeeSnapshot
         PRIMARY KEY CLUSTERED (SnapshotFactKey),
 
-
-
     -- Foreign Keys
-
     CONSTRAINT FK_FactEmployeeSnapshot_DateKey
         FOREIGN KEY (DateKey)
         REFERENCES dw_HR.DimDate (DateKey),
-
 
     CONSTRAINT FK_FactEmployeeSnapshot_AgencyKey
         FOREIGN KEY (AgencyKey)
         REFERENCES dw_HR.DimAgency (AgencyKey),
 
-
     CONSTRAINT FK_FactEmployeeSnapshot_ModeKey
         FOREIGN KEY (ModeKey)
         REFERENCES dw_HR.DimMode (ModeKey),
-
 
     CONSTRAINT FK_FactEmployeeSnapshot_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
         REFERENCES dw_HR.DimServiceType (ServiceTypeKey),
 
-
     CONSTRAINT FK_FactEmployeeSnapshot_EmploymentTypeKey
         FOREIGN KEY (EmploymentTypeKey)
         REFERENCES dw_HR.DimEmploymentType (EmploymentTypeKey),
-
 
     CONSTRAINT FK_FactEmployeeSnapshot_DepartmentKey
         FOREIGN KEY (DepartmentKey)
         REFERENCES dw_HR.DimDepartment (DepartmentKey),
 
-
     CONSTRAINT FK_FactEmployeeSnapshot_JobRoleKey
         FOREIGN KEY (JobRoleKey)
         REFERENCES dw_HR.DimJobRole (JobRoleKey),
 
-    -- --------------------------------------------------------
-    -- Measure Constraints
-    -- --------------------------------------------------------
-
+    -- Measure constraints
     CONSTRAINT CK_FactEmployeeSnapshot_EmployeeCount
-        CHECK (
-            EmployeeCount IS NULL
-            OR EmployeeCount >= 0
-        ),
+        CHECK (EmployeeCount IS NULL OR EmployeeCount >= 0),
 
+    CONSTRAINT CK_FactEmployeeSnapshot_VehicleOpsHours
+        CHECK (VehicleOpsHours IS NULL OR VehicleOpsHours >= 0),
 
-    CONSTRAINT CK_FactEmployeeSnapshot_AverageHourlyWage
-        CHECK (
-            AverageHourlyWage IS NULL
-            OR AverageHourlyWage >= 0
-        ),
+    CONSTRAINT CK_FactEmployeeSnapshot_VehicleMaintHours
+        CHECK (VehicleMaintHours IS NULL OR VehicleMaintHours >= 0),
 
+    CONSTRAINT CK_FactEmployeeSnapshot_AdminHours
+        CHECK (AdminHours IS NULL OR AdminHours >= 0),
+
+    CONSTRAINT CK_FactEmployeeSnapshot_OperatingHours
+        CHECK (OperatingHours IS NULL OR OperatingHours >= 0),
 
     CONSTRAINT CK_FactEmployeeSnapshot_TotalHoursWorked
-        CHECK (
-            TotalHoursWorked IS NULL
-            OR TotalHoursWorked >= 0
-        )
+        CHECK (TotalHoursWorked IS NULL OR TotalHoursWorked >= 0),
 
+    CONSTRAINT CK_FactEmployeeSnapshot_HoursPerEmployee
+        CHECK (HoursPerEmployee IS NULL OR HoursPerEmployee >= 0)
 );
 GO
--- ========================================================
--- Index on snapshot grain dimensions
--- ========================================================
+
+-- ============================================================
+-- INDEXES FOR OPTIMAL QUERY PERFORMANCE
+-- ============================================================
+
+-- 1. Primary grain index - Most common query pattern
 CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_Grain
 ON dw_HR.FactEmployeeSnapshot
 (
@@ -267,32 +306,36 @@ ON dw_HR.FactEmployeeSnapshot
 INCLUDE
 (
     EmployeeCount,
-    AverageHourlyWage,
-    TotalHoursWorked
+    TotalHoursWorked,
+    VehicleOpsHours,
+    VehicleMaintHours,
+    AdminHours,
+    CapitalHours,
+    OperatingHours,
+    PartTimeHours,
+    PartTimeEmployees,
+    HoursPerEmployee
 );
 GO
--- ========================================================
--- Index for agency level HR analytics
--- ========================================================
 
+-- 2. Agency HR analytics - Trend analysis by agency
 CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_Agency
-
 ON dw_HR.FactEmployeeSnapshot
 (
     AgencyKey,
     DateKey
 )
-
 INCLUDE
 (
     EmployeeCount,
-    AverageHourlyWage
+    TotalHoursWorked,
+    HoursPerEmployee,
+    PartTimeEmployees,
+    PartTimeHours
 );
-
 GO
--- ========================================================
--- Index for mode/service analysis
--- ========================================================
+
+-- 3. Mode/Service analysis - Performance by mode
 CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_ModeService
 ON dw_HR.FactEmployeeSnapshot
 (
@@ -302,6 +345,41 @@ ON dw_HR.FactEmployeeSnapshot
 )
 INCLUDE
 (
+    EmployeeCount,
+    TotalHoursWorked,
+    VehicleOpsHours,
+    VehicleMaintHours
+);
+GO
+
+-- 4. Department analysis - Staffing by department
+CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_Department
+ON dw_HR.FactEmployeeSnapshot
+(
+    DepartmentKey,
+    DateKey,
+    AgencyKey
+)
+INCLUDE
+(
+    EmployeeCount,
+    TotalHoursWorked,
+    HoursPerEmployee
+);
+GO
+
+-- 5. Part-time workforce analysis
+CREATE NONCLUSTERED INDEX IX_FactEmployeeSnapshot_PartTime
+ON dw_HR.FactEmployeeSnapshot
+(
+    EmploymentTypeKey,
+    DateKey,
+    AgencyKey
+)
+INCLUDE
+(
+    PartTimeEmployees,
+    PartTimeHours,
     EmployeeCount,
     TotalHoursWorked
 );

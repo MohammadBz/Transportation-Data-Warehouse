@@ -6,7 +6,7 @@
 --         transaction, factless, and accumulating snapshots.
 --
 -- EXECUTION ORDER: Run after 05_fact_transport_DDL.sql
---                  Run after 04_load_dimensions_etl.sql
+--                  Run after 04_load_dimensions_Transport_etl.sql
 --
 -- STORED PROCEDURES:
 --   1. sp_Load_Fact_Annual_Service_Performance  (Snapshot)

@@ -167,15 +167,25 @@ Table FactEmployeeSnapshot {
 
   JobRoleKey int
 
-  EmployeeCount int
+   -- Primary measures (from source)
+    EmployeeCount decimal              -- Total employees (FTE)
+    TotalHoursWorked decimal           -- Total hours worked
 
-  AverageHourlyWage decimal
+    -- Department breakdowns (for detailed analysis)
+    VehicleOpsHours decimal            -- Vehicle operations hours
+    VehicleMaintHours decimal          -- Vehicle maintenance hours
+    AdminHours decimal                 -- General administration hours
 
-  TotalHoursWorked decimal
+    -- Capital vs Operating split
+    CapitalHours decimal               -- Capital labor hours
+    OperatingHours decimal             -- Total operating hours
 
-  TotalOvertimeHours decimal
+    -- Part-time indicators
+    PartTimeHours decimal              -- Part-time hours
+    PartTimeEmployees decimal          -- Part-time employee count
 
-  TotalPaidHours decimal
+    -- Derived efficiency metric
+    HoursPerEmployee decimal           -- Calculated in ETL
 }
 
 // ======================================================
