@@ -894,30 +894,48 @@ SELECT
     LEFT(NULLIF(TRIM(ModeName), 'None'), 100),
     LEFT(NULLIF(TRIM(TOS), 'None'), 20),
     LEFT(NULLIF(TRIM(TypeOfServiceName), 'None'), 100),
-    LEFT(NULLIF(TRIM(NTDLaborObjectClass), 'None'), 100),
+    CASE
+        WHEN UPPER(TRIM(NTDLaborObjectClass)) IN ('VO', 'V/O', 'VEHICLE OPERATIONS') THEN 'Vehicle Operations'
+        WHEN UPPER(TRIM(NTDLaborObjectClass)) IN ('VM', 'V/M', 'VEHICLE MAINTENANCE') THEN 'Vehicle Maintenance'
+        WHEN UPPER(TRIM(NTDLaborObjectClass)) IN ('NVM', 'NON-VEHICLE MAINTENANCE', 'NON-VEH MAINT', 'FACILITY MAINTENANCE') THEN 'Facility Maintenance'
+        WHEN UPPER(TRIM(NTDLaborObjectClass)) IN ('GA', 'G/A', 'GENERAL ADMINISTRATION', 'ADMIN') THEN 'General Administration'
+        ELSE 'General Administration'
+    END,
     LEFT(NULLIF(TRIM(OperatorStatus), 'None'), 50),
-    LEFT(NULLIF(TRIM(EmploymentType), 'None'), 50),
+    CASE
+        WHEN UPPER(TRIM(EmploymentType)) IN ('FT', 'F/T', 'FULL-TIME', 'FULLTIME') THEN 'Full-Time'
+        WHEN UPPER(TRIM(EmploymentType)) IN ('PT', 'P/T', 'PART-TIME', 'PARTTIME') THEN 'Part-Time'
+        ELSE NULLIF(TRIM(EmploymentType), 'None')
+    END,
     LEFT(NULLIF(TRIM(PositionTitle), 'None'), 255),
     LEFT(NULLIF(TRIM(Department), 'None'), 255),
 
-    TRY_CAST(TRY_CAST(NULLIF(TRIM(OpenPositions), 'None') AS FLOAT) AS INT),
+    NULLIF(TRY_CAST(TRY_CAST(NULLIF(TRIM(OpenPositions), 'None') AS FLOAT) AS INT), 0),
     TRY_CAST(NULLIF(TRIM(SalaryMinHourly), 'None') AS NUMERIC(18,2)),
     TRY_CAST(NULLIF(TRIM(SalaryMaxHourly), 'None') AS NUMERIC(18,2)),
     TRY_CAST(NULLIF(TRIM(SalaryMidHourly), 'None') AS NUMERIC(18,2)),
 
     LEFT(NULLIF(TRIM(SalaryType), 'None'), 50),
-    LEFT(NULLIF(TRIM(PostingStatus), 'None'), 50),
+    CASE
+        WHEN UPPER(TRIM(PostingStatus)) IN ('O', 'OPEN', 'ACTIVE') THEN 'Open'
+        WHEN UPPER(TRIM(PostingStatus)) IN ('C', 'CLOSED', 'FILLED') THEN 'Closed'
+        WHEN UPPER(TRIM(PostingStatus)) IN ('F', 'FILLED') THEN 'Filled'
+        WHEN UPPER(TRIM(PostingStatus)) IN ('W', 'WITHDRAWN') THEN 'Withdrawn'
+        ELSE NULLIF(TRIM(PostingStatus), 'None')
+    END,
     TRY_CAST(NULLIF(TRIM(ClosingDate), 'None') AS DATE),
     TRY_CAST(NULLIF(TRIM(FilledDate), 'None') AS DATE),
-    TRY_CAST(TRY_CAST(NULLIF(TRIM(DaysOpen), 'None') AS FLOAT) AS INT),
-    TRY_CAST(TRY_CAST(NULLIF(TRIM(HiredCount), 'None') AS FLOAT) AS INT),
+    NULLIF(TRY_CAST(TRY_CAST(NULLIF(TRIM(DaysOpen), 'None') AS FLOAT) AS INT), 0),
+    NULLIF(TRY_CAST(TRY_CAST(NULLIF(TRIM(HiredCount), 'None') AS FLOAT) AS INT), 0),
 
     LEFT(NULLIF(TRIM(VacancyReason), 'None'), 255),
     LEFT(NULLIF(TRIM(SourceSystem), 'None'), 100),
     LEFT(NULLIF(TRIM(SyntheticDataFlag), 'None'), 5),
     LEFT(NULLIF(TRIM(SourceBasisURL), 'None'), 500),
     LEFT(NULLIF(TRIM(SourceBasisNote), 'None'), 500)
-FROM raw_HR.raw_job_openings;
+FROM raw_HR.raw_job_openings
+WHERE NULLIF(TRIM(OpeningID), 'None') IS NOT NULL
+  AND TRY_CAST(NULLIF(TRIM(PostingDate), 'None') AS DATE) IS NOT NULL;
 
 
 

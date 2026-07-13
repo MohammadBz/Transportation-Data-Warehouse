@@ -913,62 +913,48 @@ CREATE TABLE stg_HR.stg_transit_agency_employees_2025
 
 CREATE TABLE stg_HR.stg_job_openings
 (
-    opening_id VARCHAR(100),
-
-    posting_date DATE,
+    opening_id VARCHAR(100) NOT NULL,
+    posting_date DATE NOT NULL,
     posting_date_key INTEGER,
-
     report_year INTEGER,
-
     ntd_id VARCHAR(50),
     agency_name VARCHAR(255),
-
     reporter_type VARCHAR(100),
     reporting_module VARCHAR(100),
-
     organization_type VARCHAR(100),
-
     city_state_region VARCHAR(255),
-
     mode_code VARCHAR(50),
     mode_name VARCHAR(100),
-
     tos VARCHAR(50),
     type_of_service_name VARCHAR(100),
-
     ntd_labor_object_class VARCHAR(100),
-
     operator_status VARCHAR(50),
-
     employment_type VARCHAR(50),
-
     position_title VARCHAR(255),
-
     open_positions INTEGER,
-
     salary_min_hourly NUMERIC(18,2),
     salary_max_hourly NUMERIC(18,2),
     salary_mid_hourly NUMERIC(18,2),
-
     posting_status VARCHAR(50),
-
     closing_date DATE,
-
     filled_date DATE,
-
     days_open INTEGER,
-
     hired_count INTEGER,
-
     vacancy_reason VARCHAR(255),
-
     source_system VARCHAR(100),
-
     synthetic_data_flag CHAR(1),
-
     source_basis_url VARCHAR(MAX),
+    source_basis_note VARCHAR(MAX),
 
-    source_basis_note VARCHAR(MAX)
+    CONSTRAINT CK_JobOpenings_OpenPositions CHECK (open_positions IS NULL OR open_positions > 0),
+    CONSTRAINT CK_JobOpenings_SalaryRange CHECK (salary_min_hourly IS NULL OR salary_max_hourly IS NULL OR salary_min_hourly <= salary_max_hourly),
+    CONSTRAINT CK_JobOpenings_SalariesPositive CHECK ((salary_min_hourly IS NULL OR salary_min_hourly >= 0) AND (salary_max_hourly IS NULL OR salary_max_hourly >= 0)),
+    CONSTRAINT CK_JobOpenings_DaysOpen CHECK (days_open IS NULL OR days_open >= 0),
+    CONSTRAINT CK_JobOpenings_HiredCount CHECK (hired_count IS NULL OR hired_count >= 0),
+    CONSTRAINT CK_JobOpenings_EmploymentType CHECK (employment_type IN ('Full-Time', 'Part-Time')),
+    CONSTRAINT CK_JobOpenings_PostingStatus CHECK (posting_status IN ('Open', 'Closed', 'Filled', 'Withdrawn')),
+    CONSTRAINT CK_JobOpenings_DepartmentClass CHECK (ntd_labor_object_class IN ('Vehicle Operations', 'Vehicle Maintenance', 'Facility Maintenance', 'General Administration')),
+    CONSTRAINT CK_JobOpenings_DateSequence CHECK (closing_date IS NULL OR posting_date <= closing_date)
 );
 
 -- ============================================================
