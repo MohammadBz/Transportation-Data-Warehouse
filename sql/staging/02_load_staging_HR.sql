@@ -918,3 +918,1163 @@ SELECT
     LEFT(NULLIF(TRIM(SourceBasisURL), 'None'), 500),
     LEFT(NULLIF(TRIM(SourceBasisNote), 'None'), 500)
 FROM raw_HR.raw_job_openings;
+
+
+
+-- ============================================================
+-- LOAD UNIFIED HR EMPLOYEE TABLE
+-- Consolidates all years (2014-2025) from individual year tables
+-- Mart: HR Mart (Kimball Methodology)
+-- ============================================================
+
+-- Clear the unified table
+TRUNCATE TABLE stg_HR.stg_transit_employee_unified;
+
+-- ============================================================
+-- LOAD 2014 DATA (Full Time - Vehicle Operations)
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'Vehicle Operations',
+    NULL,
+    full_time_vehicle_operations_hours,
+    full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'Vehicle Maintenance',
+    NULL,
+    full_time_vehicle_maintenance_hours,
+    full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'Facility Maintenance',
+    NULL,
+    full_time_non_vehicle_maintenance_hours,
+    full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'General Administration',
+    NULL,
+    full_time_general_administration_hours,
+    full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+-- Part Time 2014
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'Vehicle Operations',
+    NULL,
+    part_time_vehicle_operations_hours,
+    part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'Vehicle Maintenance',
+    NULL,
+    part_time_vehicle_maintenance_hours,
+    part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'Facility Maintenance',
+    NULL,
+    part_time_non_vehicle_maintenance_hours,
+    part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2014,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'General Administration',
+    NULL,
+    part_time_general_administration_hours,
+    part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2014;
+
+-- ============================================================
+-- LOAD 2015 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'Vehicle Operations',
+    NULL,
+    full_time_vehicle_operations_hours,
+    full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'Vehicle Maintenance',
+    NULL,
+    full_time_vehicle_maintenance_hours,
+    full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'Facility Maintenance',
+    NULL,
+    full_time_non_vehicle_maintenance_hours,
+    full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'FullTime',
+    'General Administration',
+    NULL,
+    full_time_general_administration_hours,
+    full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours,
+    full_time_total_capital_labor_hours,
+    full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count,
+    full_time_total_capital_labor_employee_count,
+    full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'Vehicle Operations',
+    NULL,
+    part_time_vehicle_operations_hours,
+    part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'Vehicle Maintenance',
+    NULL,
+    part_time_vehicle_maintenance_hours,
+    part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'Facility Maintenance',
+    NULL,
+    part_time_non_vehicle_maintenance_hours,
+    part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT
+    2015,
+    ntd_id,
+    reporter_name,
+    reporter_type,
+    NULL,
+    mode,
+    tos,
+    'PartTime',
+    'General Administration',
+    NULL,
+    part_time_general_administration_hours,
+    part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours,
+    part_time_total_capital_labor_hours,
+    part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count,
+    part_time_total_capital_labor_employee_count,
+    part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2015;
+
+-- ============================================================
+-- LOAD 2016 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2016, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2016;
+
+-- ============================================================
+-- LOAD 2017 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2017, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2017;
+
+-- ============================================================
+-- LOAD 2018 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2018, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2018;
+
+-- ============================================================
+-- LOAD 2019 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2019, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2019;
+
+-- ============================================================
+-- LOAD 2020 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2020, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2020;
+
+-- ============================================================
+-- LOAD 2021 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2021, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2021;
+
+-- ============================================================
+-- LOAD 2022 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2022, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2022;
+
+-- ============================================================
+-- LOAD 2023 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2023, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2023;
+
+-- ============================================================
+-- LOAD 2024 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2024, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2024;
+
+-- ============================================================
+-- LOAD 2025 DATA
+-- ============================================================
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Operations', NULL,
+    full_time_vehicle_operations_hours, full_time_vehicle_operations_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Vehicle Maintenance', NULL,
+    full_time_vehicle_maintenance_hours, full_time_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'Facility Maintenance', NULL,
+    full_time_non_vehicle_maintenance_hours, full_time_non_vehicle_maintenance_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'FullTime', 'General Administration', NULL,
+    full_time_general_administration_hours, full_time_general_administration_employee_count,
+    full_time_total_operating_labor_hours, full_time_total_capital_labor_hours, full_time_total_labor_hours,
+    full_time_total_operating_labor_employee_count, full_time_total_capital_labor_employee_count, full_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Operations', NULL,
+    part_time_vehicle_operations_hours, part_time_vehicle_operations_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Vehicle Maintenance', NULL,
+    part_time_vehicle_maintenance_hours, part_time_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'Facility Maintenance', NULL,
+    part_time_non_vehicle_maintenance_hours, part_time_non_vehicle_maintenance_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+INSERT INTO stg_HR.stg_transit_employee_unified
+(ReportYear, NTD_ID, AgencyName, ReporterType, ReportingModule, ModeCode, TOSCode, EmploymentType, DepartmentName, OperatorType,
+ HoursWorked, EmployeeCount, OperatingHours, CapitalHours, TotalHours, OperatingEmployees, CapitalEmployees, TotalEmployees)
+SELECT 2025, ntd_id, reporter_name, reporter_type, NULL, mode, tos, 'PartTime', 'General Administration', NULL,
+    part_time_general_administration_hours, part_time_general_administration_employee_count,
+    part_time_total_operating_labor_hours, part_time_total_capital_labor_hours, part_time_total_labor_hours,
+    part_time_total_operating_labor_employee_count, part_time_total_capital_labor_employee_count, part_time_total_labor_employee_count
+FROM stg_HR.stg_transit_agency_employees_2025;
+
+-- ============================================================
+-- SUMMARY
+-- ============================================================
+-- All years (2014-2025) have been loaded into stg_HR.stg_transit_employee_unified
+-- Each department/employment type/year combination is now a single row
+-- Ready for use in dimensional models (DimDate, DimAgency, DimMode, DimServiceType, etc.)
+-- ============================================================

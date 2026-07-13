@@ -970,3 +970,50 @@ CREATE TABLE stg_HR.stg_job_openings
 
     source_basis_note VARCHAR(MAX)
 );
+
+-- ============================================================
+-- UNIFIED HR EMPLOYEE STAGING TABLE
+-- Consolidates all years (2014-2025) into a single table
+-- ============================================================
+
+CREATE TABLE stg_HR.stg_transit_employee_unified
+(
+    ReportYear INT NOT NULL,
+
+    NTD_ID VARCHAR(50) NOT NULL,
+
+    AgencyName VARCHAR(255) NULL,
+
+    ReporterType VARCHAR(100) NULL,
+
+    ReportingModule VARCHAR(100) NULL,
+
+    ModeCode VARCHAR(50) NOT NULL,
+
+    TOSCode VARCHAR(50) NOT NULL,
+
+    EmploymentType VARCHAR(20) NOT NULL,
+    -- Values: 'FullTime', 'PartTime'
+
+    DepartmentName VARCHAR(50) NOT NULL,
+    -- Values: 'Vehicle Operations', 'Vehicle Maintenance', 'Facility Maintenance', 'General Administration'
+
+    OperatorType VARCHAR(20) NULL,
+    -- Values: 'Operator', 'Non Operator', NULL (for 2014-2018 data without operator distinction)
+
+    HoursWorked DECIMAL(18,2) DEFAULT 0,
+
+    EmployeeCount DECIMAL(18,2) DEFAULT 0,
+
+    OperatingHours DECIMAL(18,2) DEFAULT 0,
+
+    CapitalHours DECIMAL(18,2) DEFAULT 0,
+
+    TotalHours DECIMAL(18,2) DEFAULT 0,
+
+    OperatingEmployees DECIMAL(18,2) DEFAULT 0,
+
+    CapitalEmployees DECIMAL(18,2) DEFAULT 0,
+
+    TotalEmployees DECIMAL(18,2) DEFAULT 0
+);
