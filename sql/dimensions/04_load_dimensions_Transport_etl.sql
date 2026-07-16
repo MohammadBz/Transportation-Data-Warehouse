@@ -97,6 +97,8 @@ BEGIN
     VALUES ('sp_load_dim_date', @LoadDate, @StartTime, 'IN_PROGRESS');
     SET @AuditId = SCOPE_IDENTITY();
 
+    DECLARE @RowsProcessed INT = 0;
+
     BEGIN TRY
         -- Load DimDate from raw source, skipping rows that already exist
         -- DimDate is static (no SCD needed), so we only insert new dates
@@ -115,22 +117,24 @@ BEGIN
             CalendarNumberOfDaysInYear
         )
         SELECT
-            src.date_key,
-            src.full_date,
-            src.day_long_name, src.day_short_name,
-            src.month_long_name, src.month_short_name,
-            src.calendar_day, src.calendar_day_in_week,
-            src.calendar_week, src.calendar_week_start_date_id, src.calendar_week_end_date_id,
-            src.calendar_month, src.calendar_month_start_date_id, src.calendar_month_end_date_id,
-            src.calendar_number_of_days_in_month, src.calendar_day_in_month,
-            src.calendar_quarter, src.calendar_quarter_start_date_id, src.calendar_quarter_end_date_id,
-            src.calendar_number_of_days_in_quarter, src.calendar_day_in_quarter,
-            src.calendar_year, src.calendar_year_start_date_id, src.calendar_year_end_date_id,
-            src.calendar_number_of_days_in_year
+            TRY_CAST(src.Id AS INT),
+            TRY_CAST(src.Date AS DATE),
+            NULLIF(src.DayLongName, 'undefined'), NULLIF(src.DayShortName, 'undefined'),
+            NULLIF(src.MonthLongName, 'undefined'), NULLIF(src.MonthShortName, 'undefined'),
+            TRY_CAST(NULLIF(src.CalendarDay, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarDayInWeek, 'undefined') AS INT),
+            TRY_CAST(NULLIF(src.CalendarWeek, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarWeekStartDateId, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarWeekEndDateId, 'undefined') AS INT),
+            TRY_CAST(NULLIF(src.CalendarMonth, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarMonthStartDateId, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarMonthEndDateId, 'undefined') AS INT),
+            TRY_CAST(NULLIF(src.CalendarNumberOfDaysInMonth, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarDayInMonth, 'undefined') AS INT),
+            TRY_CAST(NULLIF(src.CalendarQuarter, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarQuarterStartDateId, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarQuarterEndDateId, 'undefined') AS INT),
+            TRY_CAST(NULLIF(src.CalendarNumberOfDaysInQuarter, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarDayInQuarter, 'undefined') AS INT),
+            TRY_CAST(NULLIF(src.CalendarYear, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarYearStartDateId, 'undefined') AS INT), TRY_CAST(NULLIF(src.CalendarYearEndDateId, 'undefined') AS INT),
+            TRY_CAST(NULLIF(src.CalendarNumberOfDaysInYear, 'undefined') AS INT)
         FROM [TransportationDB].[raw_transport].[raw_dimdates] src
-        WHERE NOT EXISTS (
+        WHERE TRY_CAST(src.Id AS INT) IS NOT NULL
+          AND TRY_CAST(src.Date AS DATE) IS NOT NULL
+          AND NOT EXISTS (
             SELECT 1 FROM dw_transport.DimDate dw
-            WHERE dw.DateKey = src.date_key
+            WHERE dw.DateKey = TRY_CAST(src.Id AS INT)
         );
 
         SET @RowsInserted = @@ROWCOUNT;
@@ -138,17 +142,19 @@ BEGIN
         IF @Debug = 1
             PRINT CONCAT('DimDate: Inserted ', @RowsInserted, ' new date records');
 
+        -- Get total row count for audit
+        SELECT @RowsProcessed = COUNT(*) FROM dw_transport.DimDate WHERE DateKey > -1;
+
         -- Update audit table with success
         UPDATE dw_transport.etl_load_audit
         SET load_end_time = SYSDATETIME(),
-            rows_processed = (SELECT COUNT(*) FROM dw_transport.DimDate WHERE DateKey > -1),
+            rows_processed = @RowsProcessed,
             rows_inserted = @RowsInserted,
             status = 'SUCCESS'
         WHERE audit_id = @AuditId;
 
         IF @Debug = 1
-            PRINT CONCAT(CHAR(10), 'DimDate load complete. Total dimension rows: ',
-                         (SELECT COUNT(*) FROM dw_transport.DimDate WHERE DateKey > -1));
+            PRINT CONCAT(CHAR(10), 'DimDate load complete. Total dimension rows: ', @RowsProcessed);
     END TRY
     BEGIN CATCH
         SET @ErrorMsg = ERROR_MESSAGE();
@@ -181,6 +187,7 @@ BEGIN
     DECLARE @RowsInserted INT = 0;
     DECLARE @RowsUpdated INT = 0;
     DECLARE @DuplicateCount INT = 0;
+    DECLARE @RowsProcessed INT = 0;
     DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
 
     IF @LoadDate IS NULL
@@ -325,7 +332,7 @@ BEGIN
             NTD_ID, LegacyNTD_ID, AgencyName, OrganizationType,
             City, State, Region,
             ServiceAreaSqMiles, ServiceAreaPopulation,
-            @LoadDate, '9999-12-31', 1
+            '2000-01-01', '9999-12-31', 1
         FROM #AgencyChanges
         WHERE ChangeType IN ('NEW', 'CHANGE');
 
@@ -335,10 +342,13 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        -- Get total row count for audit
+        SELECT @RowsProcessed = COUNT(*) FROM #AgencyChanges;
+
         -- Log success
         UPDATE dw_transport.etl_load_audit
         SET load_end_time = SYSDATETIME(),
-            rows_processed = (SELECT COUNT(*) FROM #AgencyChanges),
+            rows_processed = @RowsProcessed,
             rows_inserted = @RowsInserted,
             rows_updated = @RowsUpdated,
             duplicate_count = @DuplicateCount,
@@ -384,6 +394,7 @@ BEGIN
     DECLARE @RowsInserted INT = 0;
     DECLARE @RowsUpdated INT = 0;
     DECLARE @DuplicateCount INT = 0;
+    DECLARE @RowsProcessed INT = 0;
     DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
 
     IF @LoadDate IS NULL
@@ -501,7 +512,7 @@ BEGIN
         SELECT
             UACECode, UZAName,
             UZASqMiles, UZAPopulation, UZADensity,
-            @LoadDate, '9999-12-31', 1
+            '2000-01-01', '9999-12-31', 1
         FROM #UrbanAreaChanges
         WHERE ChangeType IN ('NEW', 'CHANGE');
 
@@ -511,10 +522,13 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        -- Get total row count for audit
+        SELECT @RowsProcessed = COUNT(*) FROM #UrbanAreaChanges;
+
         -- Log success
         UPDATE dw_transport.etl_load_audit
         SET load_end_time = SYSDATETIME(),
-            rows_processed = (SELECT COUNT(*) FROM #UrbanAreaChanges),
+            rows_processed = @RowsProcessed,
             rows_inserted = @RowsInserted,
             rows_updated = @RowsUpdated,
             duplicate_count = @DuplicateCount,
@@ -558,6 +572,7 @@ BEGIN
     DECLARE @AuditId INT;
     DECLARE @StartTime DATETIME2 = SYSDATETIME();
     DECLARE @RowsInserted INT = 0;
+    DECLARE @RowsProcessed INT = 0;
     DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
 
     IF @LoadDate IS NULL
@@ -585,11 +600,17 @@ BEGIN
     INSERT INTO #NewSafetyEventTypes (
         EventCategory, EventType, EventSubType, SeverityLevel
     )
-    SELECT
+    SELECT DISTINCT
         src.event_category,
         src.event_type,
         src.event_type_group,
-        src.safety_security
+        CASE
+            WHEN UPPER(src.safety_security) = 'SFT' THEN 'Safety'
+            WHEN UPPER(src.safety_security) = 'SEC' THEN 'Security'
+            WHEN UPPER(src.safety_security) = 'SAFETY' THEN 'Safety'
+            WHEN UPPER(src.safety_security) = 'SECURITY' THEN 'Security'
+            ELSE src.safety_security
+        END AS safety_security
     FROM (
         -- Clean staging data (UNIQUE constraint on incident_number prevents duplicates)
         SELECT
@@ -607,12 +628,20 @@ BEGIN
             WHERE ISNULL(dw.EventCategory, '') = ISNULL(src.event_category, '')
                 AND ISNULL(dw.EventType, '') = ISNULL(src.event_type, '')
                 AND ISNULL(dw.EventSubType, '') = ISNULL(src.event_type_group, '')
-                AND ISNULL(dw.SeverityLevel, '') = ISNULL(src.safety_security, '')
+                AND ISNULL(dw.SeverityLevel, '') = ISNULL(
+                    CASE
+                        WHEN UPPER(src.safety_security) = 'SFT' THEN 'Safety'
+                        WHEN UPPER(src.safety_security) = 'SEC' THEN 'Security'
+                        WHEN UPPER(src.safety_security) = 'SAFETY' THEN 'Safety'
+                        WHEN UPPER(src.safety_security) = 'SECURITY' THEN 'Security'
+                        ELSE src.safety_security
+                    END, '')
         );
 
     IF @Debug = 1
     BEGIN
-        PRINT CONCAT('=== NEW SAFETY EVENT TYPES TO INSERT: ', (SELECT COUNT(*) FROM #NewSafetyEventTypes), ' ===');
+        DECLARE @SafetyEventTypeCount INT = (SELECT COUNT(*) FROM #NewSafetyEventTypes);
+        PRINT CONCAT('=== NEW SAFETY EVENT TYPES TO INSERT: ', @SafetyEventTypeCount, ' ===');
     END
 
     BEGIN TRANSACTION;
@@ -621,7 +650,7 @@ BEGIN
         INSERT INTO dw_transport.DimSafetyEventType (
             EventCategory, EventType, EventSubType, SeverityLevel
         )
-        SELECT
+        SELECT DISTINCT
             EventCategory, EventType, EventSubType, SeverityLevel
         FROM #NewSafetyEventTypes;
 
@@ -631,10 +660,13 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        -- Get total row count for audit
+        SELECT @RowsProcessed = COUNT(*) FROM #NewSafetyEventTypes;
+
         -- Log success
         UPDATE dw_transport.etl_load_audit
         SET load_end_time = SYSDATETIME(),
-            rows_processed = (SELECT COUNT(*) FROM #NewSafetyEventTypes),
+            rows_processed = @RowsProcessed,
             rows_inserted = @RowsInserted,
             status = 'SUCCESS'
         WHERE audit_id = @AuditId;
@@ -677,6 +709,7 @@ BEGIN
     DECLARE @StartTime DATETIME2 = SYSDATETIME();
     DECLARE @RowsInserted INT = 0;
     DECLARE @RowsUpdated INT = 0;
+    DECLARE @RowsProcessed INT = 0;
     DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
 
     IF @LoadDate IS NULL
@@ -707,7 +740,7 @@ BEGIN
         -- Clean staging data (UNIQUE constraint on incident_number prevents duplicates)
         SELECT
             LTRIM(RTRIM(incident_number)) AS incident_number,
-            LTRIM(RTRIM(narrative)) AS narrative
+            LTRIM(RTRIM(event_description)) AS narrative
         FROM stg_transport.stg_major_safety_event
         WHERE incident_number IS NOT NULL
             AND LTRIM(RTRIM(incident_number)) != ''
@@ -715,7 +748,8 @@ BEGIN
 
     IF @Debug = 1
     BEGIN
-        PRINT CONCAT('=== SAFETY INCIDENTS FOUND: ', (SELECT COUNT(*) FROM #SafetyIncidents), ' ===');
+        DECLARE @SafetyIncidentCount INT = (SELECT COUNT(*) FROM #SafetyIncidents);
+        PRINT CONCAT('=== SAFETY INCIDENTS FOUND: ', @SafetyIncidentCount, ' ===');
     END
 
     BEGIN TRANSACTION;
@@ -753,10 +787,13 @@ BEGIN
 
         COMMIT TRANSACTION;
 
+        -- Get total row count for audit
+        SELECT @RowsProcessed = COUNT(*) FROM #SafetyIncidents;
+
         -- Log success
         UPDATE dw_transport.etl_load_audit
         SET load_end_time = SYSDATETIME(),
-            rows_processed = (SELECT COUNT(*) FROM #SafetyIncidents),
+            rows_processed = @RowsProcessed,
             rows_inserted = @RowsInserted,
             rows_updated = @RowsUpdated,
             status = 'SUCCESS'

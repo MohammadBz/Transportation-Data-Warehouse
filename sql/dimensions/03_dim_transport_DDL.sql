@@ -56,27 +56,27 @@ CREATE TABLE dw_transport.DimDate (
     MonthLongName                   VARCHAR(20) NOT NULL,
     MonthShortName                  VARCHAR(10) NOT NULL,
 
-    CalendarDay                     SMALLINT    NOT NULL,
-    CalendarDayInWeek               SMALLINT    NOT NULL,
+    CalendarDay                     SMALLINT    NULL,
+    CalendarDayInWeek               SMALLINT    NULL,
 
-    CalendarWeek                    SMALLINT    NOT NULL,
-    CalendarWeekStartDateId         INT         NOT NULL,
-    CalendarWeekEndDateId           INT         NOT NULL,
+    CalendarWeek                    SMALLINT    NULL,
+    CalendarWeekStartDateId         INT         NULL,
+    CalendarWeekEndDateId           INT         NULL,
 
-    CalendarMonth                   SMALLINT    NOT NULL,
-    CalendarMonthStartDateId        INT         NOT NULL,
-    CalendarMonthEndDateId          INT         NOT NULL,
-    CalendarNumberOfDaysInMonth     SMALLINT    NOT NULL,
-    CalendarDayInMonth              SMALLINT    NOT NULL,
+    CalendarMonth                   SMALLINT    NULL,
+    CalendarMonthStartDateId        INT         NULL,
+    CalendarMonthEndDateId          INT         NULL,
+    CalendarNumberOfDaysInMonth     SMALLINT    NULL,
+    CalendarDayInMonth              SMALLINT    NULL,
 
-    CalendarQuarter                 SMALLINT    NOT NULL,
-    CalendarQuarterStartDateId      INT         NOT NULL,
-    CalendarQuarterEndDateId        INT         NOT NULL,
-    CalendarNumberOfDaysInQuarter   SMALLINT    NOT NULL,
-    CalendarDayInQuarter            SMALLINT    NOT NULL,
+    CalendarQuarter                 SMALLINT    NULL,
+    CalendarQuarterStartDateId      INT         NULL,
+    CalendarQuarterEndDateId        INT         NULL,
+    CalendarNumberOfDaysInQuarter   SMALLINT    NULL,
+    CalendarDayInQuarter            SMALLINT    NULL,
 
-    CalendarYear                    SMALLINT    NOT NULL,
-    CalendarYearStartDateId         INT         NOT NULL,
+    CalendarYear                    SMALLINT    NULL,
+    CalendarYearStartDateId         INT         NULL,
     CalendarYearEndDateId           INT         NOT NULL,
     CalendarNumberOfDaysInYear      SMALLINT    NOT NULL,
 
@@ -91,32 +91,48 @@ CREATE TABLE dw_transport.DimDate (
     -- excluded from uniqueness via a filtered unique index below.
 
     -- Calendar value range guards (unknown row exempt via DateKey = -1)
+    -- CalendarDay is day-of-year: 1-366
     CONSTRAINT CK_DimDate_CalendarDay
-        CHECK (DateKey = -1 OR CalendarDay BETWEEN 1 AND 31),
+        CHECK (DateKey = -1 OR CalendarDay IS NULL OR CalendarDay BETWEEN 1 AND 366),
+    -- CalendarDayInWeek is day-of-week: 1-7
     CONSTRAINT CK_DimDate_CalendarDayInWeek
-        CHECK (DateKey = -1 OR CalendarDayInWeek BETWEEN 1 AND 7),
+        CHECK (DateKey = -1 OR CalendarDayInWeek IS NULL OR CalendarDayInWeek BETWEEN 1 AND 7),
+    -- CalendarDayInMonth is day-of-month: 1-31
+    CONSTRAINT CK_DimDate_CalendarDayInMonth
+        CHECK (DateKey = -1 OR CalendarDayInMonth IS NULL OR CalendarDayInMonth BETWEEN 1 AND 31),
+    -- CalendarDayInQuarter is day-of-quarter: 1-92
+    CONSTRAINT CK_DimDate_CalendarDayInQuarter
+        CHECK (DateKey = -1 OR CalendarDayInQuarter IS NULL OR CalendarDayInQuarter BETWEEN 1 AND 92),
+    -- CalendarWeek is week-of-year: 1-53
     CONSTRAINT CK_DimDate_CalendarWeek
-        CHECK (DateKey = -1 OR CalendarWeek BETWEEN 1 AND 53),
+        CHECK (DateKey = -1 OR CalendarWeek IS NULL OR CalendarWeek BETWEEN 1 AND 53),
+    -- CalendarMonth is month-of-year: 1-12
     CONSTRAINT CK_DimDate_CalendarMonth
-        CHECK (DateKey = -1 OR CalendarMonth BETWEEN 1 AND 12),
+        CHECK (DateKey = -1 OR CalendarMonth IS NULL OR CalendarMonth BETWEEN 1 AND 12),
+    -- CalendarQuarter is quarter-of-year: 1-4
     CONSTRAINT CK_DimDate_CalendarQuarter
-        CHECK (DateKey = -1 OR CalendarQuarter BETWEEN 1 AND 4),
+        CHECK (DateKey = -1 OR CalendarQuarter IS NULL OR CalendarQuarter BETWEEN 1 AND 4),
+    -- CalendarYear must be >= 1900
     CONSTRAINT CK_DimDate_CalendarYear
-        CHECK (DateKey = -1 OR CalendarYear >= 1900),
+        CHECK (DateKey = -1 OR CalendarYear IS NULL OR CalendarYear >= 1900),
+    -- CalendarNumberOfDaysInMonth: days in a month (28-31)
     CONSTRAINT CK_DimDate_DaysInMonth
-        CHECK (DateKey = -1 OR CalendarNumberOfDaysInMonth BETWEEN 28 AND 31),
+        CHECK (DateKey = -1 OR CalendarNumberOfDaysInMonth IS NULL OR CalendarNumberOfDaysInMonth BETWEEN 28 AND 31),
+    -- CalendarNumberOfDaysInQuarter: days in a quarter (89-92)
     CONSTRAINT CK_DimDate_DaysInQuarter
-        CHECK (DateKey = -1 OR CalendarNumberOfDaysInQuarter BETWEEN 89 AND 92),
+        CHECK (DateKey = -1 OR CalendarNumberOfDaysInQuarter IS NULL OR CalendarNumberOfDaysInQuarter BETWEEN 89 AND 92),
+    -- CalendarNumberOfDaysInYear: days in a year (365-366)
     CONSTRAINT CK_DimDate_DaysInYear
-        CHECK (DateKey = -1 OR CalendarNumberOfDaysInYear BETWEEN 365 AND 366),
+        CHECK (DateKey = -1 OR CalendarNumberOfDaysInYear IS NULL OR CalendarNumberOfDaysInYear BETWEEN 365 AND 366),
+    -- Date range constraints allow NULL on either side
     CONSTRAINT CK_DimDate_WeekStartEnd
-        CHECK (DateKey = -1 OR CalendarWeekEndDateId >= CalendarWeekStartDateId),
+        CHECK (DateKey = -1 OR CalendarWeekStartDateId IS NULL OR CalendarWeekEndDateId IS NULL OR CalendarWeekEndDateId >= CalendarWeekStartDateId),
     CONSTRAINT CK_DimDate_MonthStartEnd
-        CHECK (DateKey = -1 OR CalendarMonthEndDateId >= CalendarMonthStartDateId),
+        CHECK (DateKey = -1 OR CalendarMonthStartDateId IS NULL OR CalendarMonthEndDateId IS NULL OR CalendarMonthEndDateId >= CalendarMonthStartDateId),
     CONSTRAINT CK_DimDate_QuarterStartEnd
-        CHECK (DateKey = -1 OR CalendarQuarterEndDateId >= CalendarQuarterStartDateId),
+        CHECK (DateKey = -1 OR CalendarQuarterStartDateId IS NULL OR CalendarQuarterEndDateId IS NULL OR CalendarQuarterEndDateId >= CalendarQuarterStartDateId),
     CONSTRAINT CK_DimDate_YearStartEnd
-        CHECK (DateKey = -1 OR CalendarYearEndDateId >= CalendarYearStartDateId)
+        CHECK (DateKey = -1 OR CalendarYearStartDateId IS NULL OR CalendarYearEndDateId >= CalendarYearStartDateId)
 );
 GO
 
@@ -126,6 +142,11 @@ CREATE UNIQUE NONCLUSTERED INDEX UQ_DimDate_FullDate
     ON dw_transport.DimDate (FullDate)
     WHERE DateKey > -1;
 GO
+
+-- ============================================================
+-- Date Dimension Data Load
+-- Includes special members: Unknown (-1) and Ongoing (99991231)
+-- ============================================================
 
 -- Unknown / missing date member
 INSERT INTO dw_transport.DimDate (
@@ -151,6 +172,33 @@ VALUES (
     -1,                                         -1,
     -1,             -1,                         -1,
     -1
+);
+GO
+
+-- Special date member for open-ended/ongoing dates (e.g., active services with no end date)
+INSERT INTO dw_transport.DimDate (
+    DateKey,        FullDate,
+    DayLongName,    DayShortName,   MonthLongName,              MonthShortName,
+    CalendarDay,    CalendarDayInWeek,
+    CalendarWeek,   CalendarWeekStartDateId,    CalendarWeekEndDateId,
+    CalendarMonth,  CalendarMonthStartDateId,   CalendarMonthEndDateId,
+    CalendarNumberOfDaysInMonth,    CalendarDayInMonth,
+    CalendarQuarter,CalendarQuarterStartDateId, CalendarQuarterEndDateId,
+    CalendarNumberOfDaysInQuarter,  CalendarDayInQuarter,
+    CalendarYear,   CalendarYearStartDateId,    CalendarYearEndDateId,
+    CalendarNumberOfDaysInYear
+)
+VALUES (
+    99991231,       '9999-12-31',
+    'December',     'Dec',          'December',                 'Dec',
+    365,            3,
+    53,             99991224,                   99991231,
+    12,             99991201,                   99991231,
+    31,                                         31,
+    4,              99991001,                   99991231,
+    92,             92,
+    9999,           99990101,                   99991231,
+    365
 );
 GO
 

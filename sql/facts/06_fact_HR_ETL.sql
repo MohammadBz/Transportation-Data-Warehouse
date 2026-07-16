@@ -277,8 +277,8 @@ BEGIN
                 stg.CapitalEmployees,
                 stg.TotalEmployees,
                 CASE
-                    WHEN stg.EmployeeCount > 0 
-                    THEN CAST(stg.HoursWorked AS DECIMAL(18,4)) / 
+                    WHEN stg.EmployeeCount > 0
+                    THEN CAST(stg.HoursWorked AS DECIMAL(18,4)) /
                          CAST(stg.EmployeeCount AS DECIMAL(18,4))
                     ELSE NULL
                 END AS HoursPerEmployee,
@@ -297,8 +297,8 @@ BEGIN
             LEFT JOIN dw_HR.DimServiceType dst
                 ON dst.TOSCode = stg.TOSCode
             LEFT JOIN dw_HR.DimEmploymentType det
-                ON det.EmploymentTypeName = 
-                   CASE 
+                ON det.EmploymentTypeName =
+                   CASE
                        WHEN stg.EmploymentType = 'FullTime' THEN 'Full-Time'
                        WHEN stg.EmploymentType = 'PartTime' THEN 'Part-Time'
                        ELSE 'Unknown Employment Type'
@@ -381,9 +381,9 @@ BEGIN
 
         PRINT CONCAT
         (
-            'FactEmployeeSnapshot: Load completed. Rows processed: ', 
-            @RowsProcessed, 
-            ', Rows inserted: ', 
+            'FactEmployeeSnapshot: Load completed. Rows processed: ',
+            @RowsProcessed,
+            ', Rows inserted: ',
             @RowsInserted
         );
 
@@ -418,7 +418,7 @@ GO
 -- SCHEMA:   dw_HR
 -- DESC:     ETL Pipeline Procedure for FactAgencyLaborCoverage (Fact 3)
 --           Type: Factless Fact Table (Operational Coverage Mapping)
---           Grain: DateKey × AgencyKey × DepartmentKey × ModeKey × 
+--           Grain: DateKey × AgencyKey × DepartmentKey × ModeKey ×
 --                  ServiceTypeKey × EmploymentTypeKey
 --
 -- DESIGN PRINCIPLES:

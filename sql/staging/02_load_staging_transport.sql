@@ -20,7 +20,6 @@ TRUNCATE TABLE stg_transport.stg_ts21_archive_voms;
 TRUNCATE TABLE stg_transport.stg_ts21_archive_fares;
 TRUNCATE TABLE stg_transport.stg_ts21_archive_opexp_total;
 TRUNCATE TABLE stg_transport.stg_major_safety_event;
-TRUNCATE TABLE stg_transport.stg_dim_date;
 
 INSERT INTO stg_transport.stg_agency_information (
     state_parent_ntd_id,
@@ -121,7 +120,7 @@ SELECT
     TRY_CAST(TRY_CAST(NULLIF(TRIM([Service Area Pop]), 'None') AS FLOAT) AS BIGINT),
 
     -- 8. Core Location and Demographic Fields
-    LEFT(NULLIF(TRIM([Primary UZA UACE Code]), 'None'), 50),
+    CASE WHEN CHARINDEX('.', TRIM([Primary UZA UACE Code])) > 0 THEN LEFT(TRIM([Primary UZA UACE Code]), CHARINDEX('.', TRIM([Primary UZA UACE Code])) - 1) ELSE LEFT(NULLIF(TRIM([Primary UZA UACE Code]), 'None'), 50) END,
     LEFT(NULLIF(TRIM([UZA Name]), 'None'), 255),
     LEFT(NULLIF(TRIM([Tribal Area Name]), 'None'), 255),
     TRY_CAST(TRY_CAST(NULLIF(TRIM([Population]), 'None') AS FLOAT) AS BIGINT),
@@ -141,7 +140,13 @@ SELECT
     TRY_CAST(NULLIF(TRIM([Number of Counties with Service]), 'None') AS NUMERIC(18,2)),
     TRY_CAST(NULLIF(TRIM([State Admin Funds Expended]), 'None') AS NUMERIC(18,2))
 
-FROM raw_transport.[raw_2024_agency_information_250922];
+FROM (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (PARTITION BY TRIM([NTD ID]) ORDER BY (SELECT NULL)) AS rn
+    FROM raw_transport.[raw_2024_agency_information_250922]
+) src
+WHERE src.rn = 1;
 
 INSERT INTO stg_transport.stg_agency_mode_service (
     state_parent_ntd_id,
@@ -1358,29 +1363,29 @@ INSERT INTO stg_transport.stg_major_safety_event (
     property_damage_amount
 )
 SELECT
-    TRY_CAST([Incident Number] AS BIGINT),
+    TRY_CAST(src_mse.[Incident Number] AS BIGINT),
 
-    LEFT(NULLIF(TRIM([NTD ID]), ''), 50),
-    LEFT(NULLIF(TRIM([Agency]), ''), 255),
+    LEFT(NULLIF(TRIM(src_mse.[NTD ID]), ''), 50),
+    LEFT(NULLIF(TRIM(src_mse.[Agency]), ''), 255),
 
-    LEFT(NULLIF(TRIM([Primary UZA UACE Code]), ''), 50),
+    LEFT(NULLIF(TRIM(src_mse.[Primary UZA UACE Code]), ''), 50),
 
-    LEFT(NULLIF(TRIM([Mode]), ''), 20),
-    LEFT(NULLIF(TRIM([TOS]), ''), 20),
+    LEFT(NULLIF(TRIM(src_mse.[Mode]), ''), 20),
+    LEFT(NULLIF(TRIM(src_mse.[TOS]), ''), 20),
 
-    TRY_PARSE([Event Date] AS DATE USING 'en-US'),
+    TRY_PARSE(src_mse.[Event Date] AS DATE USING 'en-US'),
 
-    TRY_CAST([Event Time] AS TIME),
+    TRY_CAST(src_mse.[Event Time] AS TIME),
 
-    TRY_CAST([Year] AS INT),
+    TRY_CAST(src_mse.[Year] AS INT),
 
-    LEFT(NULLIF(TRIM([Event Category]), ''), 100),
-    LEFT(NULLIF(TRIM([Event Type]), ''), 200),
-    LEFT(NULLIF(TRIM([Event Type Group]), ''), 100),
+    LEFT(NULLIF(TRIM(src_mse.[Event Category]), ''), 100),
+    LEFT(NULLIF(TRIM(src_mse.[Event Type]), ''), 200),
+    LEFT(NULLIF(TRIM(src_mse.[Event Type Group]), ''), 100),
 
-    LEFT(NULLIF(TRIM([Safety/Security]), ''), 20),
+    LEFT(NULLIF(TRIM(src_mse.[Safety/Security]), ''), 20),
 
-    [Event Description],
+    src_mse.[Event Description],
 
     -- ===== Fatalities: 3-way split + authoritative total =====
     -- Passenger  = Transit Vehicle Riders + People Waiting/Leaving
@@ -1389,28 +1394,33 @@ SELECT
     --              component columns can over-count vs the reported total)
     fat.passenger_fatality_count,
     fat.employee_fatality_count,
-    fat.other_fatality_count,
+    fat_other.other_fatality_count,
     fat.total_fatality_count,
 
     -- ===== Injuries: same 3-way split logic =====
     inj.passenger_injury_count,
     inj.employee_injury_count,
-    inj.other_injury_count,
+    inj_other.other_injury_count,
     inj.total_injury_count,
 
-    TRY_CAST([Number of Transit Vehicles Involved] AS INT),
+    TRY_CAST(src_mse.[Number of Transit Vehicles Involved] AS INT),
 
     CASE
-        WHEN LOWER(TRIM([Evacuation])) = 'true' THEN 1
-        WHEN LOWER(TRIM([Evacuation])) = 'false' THEN 0
+        WHEN LOWER(TRIM(src_mse.[Evacuation])) = 'true' THEN 1
+        WHEN LOWER(TRIM(src_mse.[Evacuation])) = 'false' THEN 0
         ELSE NULL
     END,
 
     -- Property Damage is numeric-with-commas in the source (e.g. '1,000'),
     -- so strip the thousands separators before casting to a decimal amount.
-    TRY_CAST(REPLACE([Property Damage], ',', '') AS NUMERIC(18,2))
+    TRY_CAST(REPLACE(src_mse.[Property Damage], ',', '') AS NUMERIC(18,2))
 
-FROM raw_transport.raw_major_safety_and_security_events_20260607
+FROM (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (PARTITION BY TRY_CAST([Incident Number] AS BIGINT) ORDER BY (SELECT NULL)) AS rn
+    FROM raw_transport.raw_major_safety_and_security_events_20260607
+) src_mse
 
 -- ------------------------------------------------------------
 -- Fatality bucketing
@@ -1418,16 +1428,16 @@ FROM raw_transport.raw_major_safety_and_security_events_20260607
 CROSS APPLY (
     SELECT
         -- Passenger fatalities
-        ISNULL(TRY_CAST([Transit Vehicle Rider Fatalities] AS INT), 0)
-        + ISNULL(TRY_CAST([People Waiting or Leaving Fatalities] AS INT), 0)
+        ISNULL(TRY_CAST(src_mse.[Transit Vehicle Rider Fatalities] AS INT), 0)
+        + ISNULL(TRY_CAST(src_mse.[People Waiting or Leaving Fatalities] AS INT), 0)
             AS passenger_fatality_count,
         -- Employee fatalities
-        ISNULL(TRY_CAST([Transit Vehicle Operator Fatalities] AS INT), 0)
-        + ISNULL(TRY_CAST([Non-Operator Transit Employee Fatalities] AS INT), 0)
-        + ISNULL(TRY_CAST([Other Worker Fatalities] AS INT), 0)
+        ISNULL(TRY_CAST(src_mse.[Transit Vehicle Operator Fatalities] AS INT), 0)
+        + ISNULL(TRY_CAST(src_mse.[Non-Operator Transit Employee Fatalities] AS INT), 0)
+        + ISNULL(TRY_CAST(src_mse.[Other Worker Fatalities] AS INT), 0)
             AS employee_fatality_count,
         -- Authoritative total
-        TRY_CAST([Total Fatalities] AS INT) AS total_fatality_count
+        TRY_CAST(src_mse.[Total Fatalities] AS INT) AS total_fatality_count
 ) fat
 CROSS APPLY (
     -- Other = Total - Passenger - Employee, clamped to a minimum of 0
@@ -1449,14 +1459,14 @@ CROSS APPLY (
 -- ------------------------------------------------------------
 CROSS APPLY (
     SELECT
-        ISNULL(TRY_CAST([Transit Vehicle Rider Injuries] AS INT), 0)
-        + ISNULL(TRY_CAST([People Waiting or Leaving Injuries] AS INT), 0)
+        ISNULL(TRY_CAST(src_mse.[Transit Vehicle Rider Injuries] AS INT), 0)
+        + ISNULL(TRY_CAST(src_mse.[People Waiting or Leaving Injuries] AS INT), 0)
             AS passenger_injury_count,
-        ISNULL(TRY_CAST([Transit Vehicle Operator Injuries] AS INT), 0)
-        + ISNULL(TRY_CAST([Non-Operator Transit Employee Injuries] AS INT), 0)
-        + ISNULL(TRY_CAST([Other Worker Injuries] AS INT), 0)
+        ISNULL(TRY_CAST(src_mse.[Transit Vehicle Operator Injuries] AS INT), 0)
+        + ISNULL(TRY_CAST(src_mse.[Non-Operator Transit Employee Injuries] AS INT), 0)
+        + ISNULL(TRY_CAST(src_mse.[Other Worker Injuries] AS INT), 0)
             AS employee_injury_count,
-        TRY_CAST([Total Injuries] AS INT) AS total_injury_count
+        TRY_CAST(src_mse.[Total Injuries] AS INT) AS total_injury_count
 ) inj
 CROSS APPLY (
     SELECT
@@ -1468,4 +1478,5 @@ CROSS APPLY (
             ELSE inj.total_injury_count - inj.passenger_injury_count
                                        - inj.employee_injury_count
         END AS other_injury_count
-) inj_other;
+) inj_other
+WHERE src_mse.rn = 1;

@@ -90,12 +90,13 @@ BEGIN
         -- Unpivot UPT once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS BIGINT) AS UPT
         INTO #UPT
-        FROM stg_transport.stg_ts21_upt s
+        FROM stg_transport.stg_ts21_upt
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -107,12 +108,13 @@ BEGIN
         -- Unpivot PMT once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS BIGINT) AS PMT
         INTO #PMT
-        FROM stg_transport.stg_ts21_pmt s
+        FROM stg_transport.stg_ts21_pmt
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -124,12 +126,13 @@ BEGIN
         -- Unpivot DRM once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS BIGINT) AS DRM
         INTO #DRM
-        FROM stg_transport.stg_ts21_drm s
+        FROM stg_transport.stg_ts21_drm
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -141,12 +144,13 @@ BEGIN
         -- Unpivot Fares once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS DECIMAL(18,2)) AS Fares
         INTO #Fares
-        FROM stg_transport.stg_ts21_fares s
+        FROM stg_transport.stg_ts21_fares
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -158,12 +162,13 @@ BEGIN
         -- Unpivot Operating Expense once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS DECIMAL(18,2)) AS OperatingExpenseTotal
         INTO #OpExp
-        FROM stg_transport.stg_ts21_opexp_total s
+        FROM stg_transport.stg_ts21_opexp_total
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -175,12 +180,13 @@ BEGIN
         -- Unpivot VRM once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS BIGINT) AS VRM
         INTO #VRM
-        FROM stg_transport.stg_ts21_vrm s
+        FROM stg_transport.stg_ts21_vrm
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -192,12 +198,13 @@ BEGIN
         -- Unpivot VRH once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS BIGINT) AS VRH
         INTO #VRH
-        FROM stg_transport.stg_ts21_vrh s
+        FROM stg_transport.stg_ts21_vrh
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -209,12 +216,13 @@ BEGIN
         -- Unpivot VOMS once
         SELECT
             CAST(SUBSTRING(YearColumn, 2, 4) AS INT) AS ReportYear,
-            s.ntd_id,
-            s.mode,
-            s.type_of_service,
+            ntd_id,
+            uace_code,
+            mode,
+            type_of_service,
             CAST(YearValue AS INT) AS VOMS
         INTO #VOMS
-        FROM stg_transport.stg_ts21_voms s
+        FROM stg_transport.stg_ts21_voms
         UNPIVOT (
             YearValue FOR YearColumn IN (
                 [y2015], [y2016], [y2017], [y2018], [y2019], [y2020],
@@ -232,35 +240,39 @@ BEGIN
             ntd_id VARCHAR(50),
             uace_code VARCHAR(50),
             mode VARCHAR(20),
-            type_of_service VARCHAR(20)
+            type_of_service VARCHAR(20),
+            UNIQUE (ReportYear, ntd_id, uace_code, mode, type_of_service)
         );
 
         -- Populate from ALL metrics using UNION to capture every business key that exists in any metric table
         -- Reuse the temp tables already created, avoiding duplicate unpivots
         INSERT INTO #MasterGrainKeys
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #UPT
-        UNION
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #PMT
-        UNION
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #DRM
-        UNION
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #Fares
-        UNION
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #OpExp
-        UNION
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #VRM
-        UNION
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #VRH
-        UNION
-        SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
-        FROM #VOMS;
+        SELECT ReportYear, ntd_id, uace_code, mode, type_of_service
+        FROM (
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #UPT
+            UNION
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #PMT
+            UNION
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #DRM
+            UNION
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #Fares
+            UNION
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #OpExp
+            UNION
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #VRM
+            UNION
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #VRH
+            UNION
+            SELECT DISTINCT ReportYear, ntd_id, uace_code, mode, type_of_service
+            FROM #VOMS
+        ) mgk;
 
         -- Create clustered index on master grain keys for performance
         CREATE CLUSTERED INDEX IX_MasterGrain
@@ -346,18 +358,50 @@ BEGIN
 
         -- Clustered index on #AnnualPerformanceStaging: Check data size before creating
         -- For ~50k rows or less, skip the index; for 500k+, create it.
+        DECLARE @StagingRowCount INT = (SELECT COUNT(*) FROM #AnnualPerformanceStaging);
+        DECLARE @DistinctNTDIds INT = (SELECT COUNT(DISTINCT ntd_id) FROM #AnnualPerformanceStaging);
+        DECLARE @DistinctUACECodes INT = (SELECT COUNT(DISTINCT uace_code) FROM #AnnualPerformanceStaging);
+        DECLARE @SampleNTDID VARCHAR(50) = (SELECT TOP 1 ntd_id FROM #AnnualPerformanceStaging WHERE ntd_id IS NOT NULL);
+        DECLARE @DimAgencyCount INT = (SELECT COUNT(*) FROM dw_transport.DimAgency);
+        DECLARE @DimUrbanAreaCount INT = (SELECT COUNT(*) FROM dw_transport.DimUrbanArea);
+        PRINT CONCAT('Staging records to load: ', @StagingRowCount);
+        PRINT CONCAT('Distinct NTD IDs: ', @DistinctNTDIds);
+        PRINT CONCAT('Distinct UACE Codes: ', @DistinctUACECodes);
+        PRINT CONCAT('Sample NTD ID: ', ISNULL(@SampleNTDID, 'NULL'));
+        PRINT CONCAT('DimAgency record count: ', @DimAgencyCount);
+        PRINT CONCAT('DimUrbanArea record count: ', @DimUrbanAreaCount);
 
         -- ============================================================
         -- STEP 2: Optional reload handling for data corrections
         --         CRITIC #4 FIX: Added @ReloadIfExists parameter
         -- ============================================================
 
-        IF @ReloadIfExists = 1 AND @BatchID IS NOT NULL
+        IF @ReloadIfExists = 1
         BEGIN
+            -- Delete any existing rows with the same grain before reload
             DELETE FROM dw_transport.Fact_Annual_Service_Performance
-            WHERE ETL_BatchID = @BatchID;
+            WHERE EXISTS (
+                SELECT 1 FROM #AnnualPerformanceStaging aps
+                LEFT JOIN dw_transport.DimDate dd
+                    ON dd.CalendarYear = aps.ReportYear
+                    AND dd.CalendarMonth = 1
+                    AND dd.CalendarDay = 1
+                LEFT JOIN dw_transport.DimAgency da
+                    ON da.NTD_ID = aps.ntd_id
+                    AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) >= da.EffectiveDate
+                    AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) < da.ExpirationDate
+                LEFT JOIN dw_transport.DimMode dm
+                    ON dm.ModeCode = aps.mode
+                LEFT JOIN dw_transport.DimServiceType dst
+                    ON dst.TOSCode = aps.type_of_service
+                WHERE Fact_Annual_Service_Performance.DateKey = COALESCE(dd.DateKey, -1)
+                AND Fact_Annual_Service_Performance.AgencyKey = COALESCE(da.AgencyKey, -1)
+                AND Fact_Annual_Service_Performance.ModeKey = COALESCE(dm.ModeKey, -1)
+                AND Fact_Annual_Service_Performance.ServiceTypeKey = COALESCE(dst.ServiceTypeKey, -1)
+
+            );
             SET @RowsDeleted = @@ROWCOUNT;
-            PRINT CONCAT('Deleted ', @RowsDeleted, ' rows for reload (BatchID: ', @BatchID, ')');
+            PRINT CONCAT('Deleted ', @RowsDeleted, ' rows for grain reload');
         END
 
         -- ============================================================
@@ -391,28 +435,48 @@ BEGIN
             COALESCE(dm.ModeKey, -1) AS ModeKey,
             COALESCE(dst.ServiceTypeKey, -1) AS ServiceTypeKey,
             COALESCE(dua.UrbanAreaKey, -1) AS UrbanAreaKey,
-            aps.UPT,
-            aps.PMT,
-            aps.VRM,
-            aps.VRH,
-            aps.VOMS,
-            aps.DRM,
-            aps.Fares,
-            aps.OperatingExpenseTotal,
+            MAX(aps.UPT) AS UPT,
+            MAX(aps.PMT) AS PMT,
+            MAX(aps.VRM) AS VRM,
+            MAX(aps.VRH) AS VRH,
+            MAX(aps.VOMS) AS VOMS,
+            MAX(aps.DRM) AS DRM,
+            MAX(aps.Fares) AS Fares,
+            MAX(aps.OperatingExpenseTotal) AS OperatingExpenseTotal,
             @LoadStartTime,
             NULL,
             @BatchID,
             @SourceSystem
-        FROM #AnnualPerformanceStaging aps
+        FROM (
+            -- Deduplicate staging data on grain: (ReportYear, ntd_id, mode, type_of_service)
+            -- If the same grain appears in multiple metric sources, take max of measures
+            SELECT
+                ReportYear,
+                ntd_id,
+                uace_code,
+                mode,
+                type_of_service,
+                MAX(UPT) AS UPT,
+                MAX(PMT) AS PMT,
+                MAX(VRM) AS VRM,
+                MAX(VRH) AS VRH,
+                MAX(VOMS) AS VOMS,
+                MAX(DRM) AS DRM,
+                MAX(Fares) AS Fares,
+                MAX(OperatingExpenseTotal) AS OperatingExpenseTotal
+            FROM #AnnualPerformanceStaging
+            GROUP BY ReportYear, ntd_id, uace_code, mode, type_of_service
+        ) aps
         LEFT JOIN dw_transport.DimDate dd
             ON dd.CalendarYear = aps.ReportYear
             AND dd.CalendarMonth = 1
             AND dd.CalendarDay = 1
         -- CRITIC #3 FIX: Use effective date range instead of CurrentFlag
+        -- NOTE: Use dd.FullDate ONLY if dd matched; otherwise use a default date or GETDATE()
         LEFT JOIN dw_transport.DimAgency da
             ON da.NTD_ID = aps.ntd_id
-            AND dd.FullDate >= da.EffectiveDate
-            AND dd.FullDate < da.ExpirationDate
+            AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) >= da.EffectiveDate
+            AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) < da.ExpirationDate
         LEFT JOIN dw_transport.DimMode dm
             ON dm.ModeCode = aps.mode
         LEFT JOIN dw_transport.DimServiceType dst
@@ -420,24 +484,34 @@ BEGIN
         -- CRITIC #3 FIX: Use effective date range for historical accuracy
         LEFT JOIN dw_transport.DimUrbanArea dua
             ON dua.UACECode = aps.uace_code
-            AND dd.FullDate >= dua.EffectiveDate
-            AND dd.FullDate < dua.ExpirationDate
-        WHERE (@ReloadIfExists = 1)  -- If reload mode, always insert
-            OR (@ReloadIfExists = 0 AND NOT EXISTS (
-                SELECT 1
-                FROM dw_transport.Fact_Annual_Service_Performance fasp
-                WHERE fasp.DateKey = COALESCE(dd.DateKey, -1)
-                AND fasp.AgencyKey = COALESCE(da.AgencyKey, -1)
-                AND fasp.ModeKey = COALESCE(dm.ModeKey, -1)
-                AND fasp.ServiceTypeKey = COALESCE(dst.ServiceTypeKey, -1)
-                AND fasp.UrbanAreaKey = COALESCE(dua.UrbanAreaKey, -1)
-            ));
+            AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) >= dua.EffectiveDate
+            AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) < dua.ExpirationDate
+        GROUP BY
+            COALESCE(dd.DateKey, -1),
+            COALESCE(da.AgencyKey, -1),
+            COALESCE(dm.ModeKey, -1),
+            COALESCE(dst.ServiceTypeKey, -1),
+            COALESCE(dua.UrbanAreaKey, -1)
+        HAVING COALESCE(da.AgencyKey, -1) <> -1  -- Filter out unmatched agencies
+            AND (
+                (@ReloadIfExists = 1)  -- If reload mode, always insert
+                OR (@ReloadIfExists = 0 AND NOT EXISTS (
+                    SELECT 1
+                    FROM dw_transport.Fact_Annual_Service_Performance fasp
+                    WHERE fasp.DateKey = COALESCE(dd.DateKey, -1)
+                    AND fasp.AgencyKey = COALESCE(da.AgencyKey, -1)
+                    AND fasp.ModeKey = COALESCE(dm.ModeKey, -1)
+                    AND fasp.ServiceTypeKey = COALESCE(dst.ServiceTypeKey, -1)
+                ))
+            );
 
         SET @RowsInserted = @@ROWCOUNT;
 
         -- Clean up temporary tables
         DROP TABLE #MasterGrainKeys;
-        DROP TABLE #AnnualPerformanceStaging;
+        PRINT CONCAT('Inserted fact records with valid agencies: ', @RowsInserted);
+
+    DROP TABLE #AnnualPerformanceStaging;
         DROP TABLE #UPT;
         DROP TABLE #PMT;
         DROP TABLE #DRM;
@@ -601,8 +675,8 @@ BEGIN
             AND dset.EventType = mse.event_type
             AND dset.EventSubType = mse.event_type_group
             AND dset.SeverityLevel = CASE
-                WHEN mse.safety_security = 'Safety' THEN 'Safety'
-                WHEN mse.safety_security = 'Security' THEN 'Security'
+                WHEN mse.safety_security = 'SFT' THEN 'Safety'
+                WHEN mse.safety_security = 'SEC' THEN 'Security'
                 ELSE NULL
             END
         LEFT JOIN dw_transport.DimSafetyIncident dsi
@@ -767,9 +841,12 @@ BEGIN
             COALESCE(da.AgencyKey, -1) AS AgencyKey,
             COALESCE(dm.ModeKey, -1) AS ModeKey,
             COALESCE(dst.ServiceTypeKey, -1) AS ServiceTypeKey,
-            COALESCE(dd_commitment.DateKey, -1) AS CommitmentDateKey,
-            COALESCE(dd_start.DateKey, -1) AS StartDateKey,
-            COALESCE(dd_end.DateKey, -1) AS EndDateKey,
+            -- Optional milestone: NULL is valid for missing commitment dates
+            dd_commitment.DateKey AS CommitmentDateKey,
+            -- Required milestone: must exist (filter in WHERE clause)
+            dd_start.DateKey AS StartDateKey,
+            -- Ongoing service: use special maximum date (9999-12-31) for open-ended services
+            COALESCE(dd_end.DateKey, 99991231) AS EndDateKey,
             -- Store source value: use 1 for 'Active Service', 0 for 'Ending Service'
             -- Don't recompute based on today's date; store what source says
             CASE
@@ -781,7 +858,18 @@ BEGIN
             NULL,
             @BatchID,
             @SourceSystem
-        FROM stg_transport.stg_agency_mode_service sams
+        FROM (
+            -- Deduplicate staging data: source may contain duplicate service records
+            -- Use ROW_NUMBER to keep only the first occurrence of each unique service
+            SELECT
+                *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ntd_id, mode, type_of_service_code, service_type, 
+                                 commitment_date, start_service_date, end_service_date
+                    ORDER BY CASE WHEN start_service_date IS NULL THEN 1 ELSE 0 END ASC, start_service_date DESC
+                ) AS rn
+            FROM stg_transport.stg_agency_mode_service
+        ) sams
         -- Use SCD Type 2 effective date range instead of CurrentFlag
         LEFT JOIN dw_transport.DimAgency da
             ON da.NTD_ID = sams.ntd_id
@@ -798,7 +886,13 @@ BEGIN
         LEFT JOIN dw_transport.DimDate dd_end
             ON dd_end.FullDate = sams.end_service_date
         -- Exclude administrative rows that aren't actual service periods
-        WHERE sams.service_type IN ('Active Service','Ending Service')
+        -- Require a valid start date (actual service must have known start date)
+        -- Require a valid agency (ignore rows where agency cannot be identified)
+        -- Deduplicate: keep only first occurrence of each unique service
+        WHERE sams.rn = 1
+        AND sams.service_type IN ('Active Service','Ending Service')
+        AND dd_start.DateKey IS NOT NULL
+        AND da.AgencyKey IS NOT NULL
         -- Only insert if not already present (unless reload mode)
         AND ((@ReloadIfExists = 1) OR (@ReloadIfExists = 0 AND NOT EXISTS (
             SELECT 1
@@ -806,9 +900,9 @@ BEGIN
             WHERE fsa.AgencyKey = COALESCE(da.AgencyKey, -1)
             AND fsa.ModeKey = COALESCE(dm.ModeKey, -1)
             AND fsa.ServiceTypeKey = COALESCE(dst.ServiceTypeKey, -1)
-            AND fsa.CommitmentDateKey = COALESCE(dd_commitment.DateKey, -1)
-            AND fsa.StartDateKey = COALESCE(dd_start.DateKey, -1)
-            AND fsa.EndDateKey = COALESCE(dd_end.DateKey, -1)
+            AND fsa.CommitmentDateKey = dd_commitment.DateKey
+            AND fsa.StartDateKey = dd_start.DateKey
+            AND fsa.EndDateKey = COALESCE(dd_end.DateKey, 99991231)
         )));
 
         SET @RowsInserted = @@ROWCOUNT;

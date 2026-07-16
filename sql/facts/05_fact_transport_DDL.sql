@@ -80,7 +80,7 @@ CREATE TABLE dw_transport.Fact_Annual_Service_Performance (
     -- ETL audit columns
     ETL_InsertDate              DATETIME        NOT NULL    DEFAULT(GETDATE()),
     ETL_UpdateDate              DATETIME        NULL,
-    ETL_BatchID                 INT             NULL,
+    ETL_BatchID                 BIGINT          NULL,
     RecordSourceSystem          VARCHAR(50)     NULL,
 
     -- --------------------------------------------------------
@@ -98,7 +98,6 @@ CREATE TABLE dw_transport.Fact_Annual_Service_Performance (
         --   If source changes (CSV→API), same business record should not duplicate
         CONSTRAINT UQ_Fact_ASP_Grain
             UNIQUE (DateKey, AgencyKey, ModeKey, ServiceTypeKey),
-
     -- Foreign key constraints to dimensions
     CONSTRAINT FK_Fact_ASP_DateKey
         FOREIGN KEY (DateKey)
@@ -218,7 +217,7 @@ CREATE TABLE dw_transport.Fact_Major_Safety_Event (
     -- ETL audit columns
     ETL_InsertDate              DATETIME        NOT NULL    DEFAULT(GETDATE()),
     ETL_UpdateDate              DATETIME        NULL,
-    ETL_BatchID                 INT             NULL,
+    ETL_BatchID                 BIGINT          NULL,
     RecordSourceSystem          VARCHAR(50)     NULL,
 
     -- --------------------------------------------------------
@@ -355,7 +354,7 @@ CREATE TABLE dw_transport.Fact_Service_Availability (
     -- ETL audit columns
     ETL_InsertDate              DATETIME        NOT NULL    DEFAULT(GETDATE()),
     ETL_UpdateDate              DATETIME        NULL,
-    ETL_BatchID                 INT             NULL,
+    ETL_BatchID                 BIGINT          NULL,
     RecordSourceSystem          VARCHAR(50)     NULL,
 
     -- --------------------------------------------------------
@@ -506,7 +505,7 @@ CREATE TABLE dw_transport.Fact_Service_Lifecycle_Accumulating (
     -- Track when this record was created and last updated
     ETL_InsertDate              DATETIME        NOT NULL    DEFAULT(GETDATE()),
     ETL_UpdateDate              DATETIME        NULL,
-    ETL_BatchID                 INT             NULL,
+    ETL_BatchID                 BIGINT          NULL,
     RecordSourceSystem          VARCHAR(50)     NULL,
 
     -- --------------------------------------------------------
