@@ -89,16 +89,16 @@ CREATE TABLE dw_HR.FactJobPosting (
     -- Foreign key constraints
     CONSTRAINT FK_FactJobPosting_DateKey
         FOREIGN KEY (DateKey)
-        REFERENCES dw_HR.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_FactJobPosting_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_HR.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
     CONSTRAINT FK_FactJobPosting_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_HR.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
     CONSTRAINT FK_FactJobPosting_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_HR.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
     CONSTRAINT FK_FactJobPosting_EmploymentTypeKey
         FOREIGN KEY (EmploymentTypeKey)
         REFERENCES dw_HR.DimEmploymentType (EmploymentTypeKey),
@@ -221,19 +221,19 @@ CREATE TABLE dw_HR.FactEmployeeSnapshot (
     -- Foreign Keys
     CONSTRAINT FK_FactEmployeeSnapshot_DateKey
         FOREIGN KEY (DateKey)
-        REFERENCES dw_HR.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
 
     CONSTRAINT FK_FactEmployeeSnapshot_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_HR.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
 
     CONSTRAINT FK_FactEmployeeSnapshot_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_HR.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
 
     CONSTRAINT FK_FactEmployeeSnapshot_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_HR.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
 
     CONSTRAINT FK_FactEmployeeSnapshot_EmploymentTypeKey
         FOREIGN KEY (EmploymentTypeKey)
@@ -368,51 +368,54 @@ IF OBJECT_ID('dw_HR.FactAgencyLaborCoverage', 'U') IS NOT NULL
     DROP TABLE dw_HR.FactAgencyLaborCoverage;
 GO
 
-CREATE TABLE dw_HR.FactAgencyLaborCoverage (
+CREATE TABLE dw_HR.FactAgencyLaborCoverage
+(
+    CoverageFactKey BIGINT NOT NULL IDENTITY(1,1),
 
-    -- Surrogate fact key (used for unique row identification)
-    CoverageFactKey             BIGINT          NOT NULL    IDENTITY(1,1),
+    DateKey             INT NOT NULL,
+    AgencyKey           INT NOT NULL,
+    DepartmentKey       INT NOT NULL,
+    ModeKey             INT NOT NULL,
+    ServiceTypeKey      INT NOT NULL,
+    EmploymentTypeKey   INT NOT NULL,
 
-    -- Foreign keys to dimensions (all required for factless fact grain)
-    DateKey                     INT             NOT NULL,    -- Effective date of coverage
-    AgencyKey                   INT             NOT NULL,
-    DepartmentKey               INT             NOT NULL,
-    ModeKey                     INT             NOT NULL,
-    ServiceTypeKey              INT             NOT NULL,
-    EmploymentTypeKey           INT             NOT NULL,
-
-    -- No measure columns in a factless fact table
-    -- Existence of row = coverage exists
-
-    -- --------------------------------------------------------
-    -- Constraints
-    -- --------------------------------------------------------
     CONSTRAINT PK_FactAgencyLaborCoverage
         PRIMARY KEY CLUSTERED (CoverageFactKey),
 
-    -- Foreign key constraints
     CONSTRAINT FK_FactAgencyLaborCoverage_DateKey
         FOREIGN KEY (DateKey)
-        REFERENCES dw_HR.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
+
     CONSTRAINT FK_FactAgencyLaborCoverage_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_HR.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
+
     CONSTRAINT FK_FactAgencyLaborCoverage_DepartmentKey
         FOREIGN KEY (DepartmentKey)
         REFERENCES dw_HR.DimDepartment (DepartmentKey),
+
     CONSTRAINT FK_FactAgencyLaborCoverage_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_HR.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
+
     CONSTRAINT FK_FactAgencyLaborCoverage_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_HR.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
+
     CONSTRAINT FK_FactAgencyLaborCoverage_EmploymentTypeKey
         FOREIGN KEY (EmploymentTypeKey)
         REFERENCES dw_HR.DimEmploymentType (EmploymentTypeKey),
 
-    -- Unique composite key ensures no duplicate coverage records
     CONSTRAINT UQ_FactAgencyLaborCoverage_Coverage
-        UNIQUE (AgencyKey, DepartmentKey, ModeKey, ServiceTypeKey, EmploymentTypeKey)
+        UNIQUE
+        (
+            DateKey,
+            AgencyKey,
+            DepartmentKey,
+            ModeKey,
+            ServiceTypeKey,
+            EmploymentTypeKey
+        )
 );
 GO
 
@@ -493,13 +496,13 @@ CREATE TABLE dw_HR.FactJobPostingLifecycle (
     -- Foreign key constraints
     CONSTRAINT FK_FactJobPostingLifecycle_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_HR.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
     CONSTRAINT FK_FactJobPostingLifecycle_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_HR.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
     CONSTRAINT FK_FactJobPostingLifecycle_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_HR.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
     CONSTRAINT FK_FactJobPostingLifecycle_EmploymentTypeKey
         FOREIGN KEY (EmploymentTypeKey)
         REFERENCES dw_HR.DimEmploymentType (EmploymentTypeKey),
@@ -511,13 +514,13 @@ CREATE TABLE dw_HR.FactJobPostingLifecycle (
         REFERENCES dw_HR.DimJobRole (JobRoleKey),
     CONSTRAINT FK_FactJobPostingLifecycle_PostingDateKey
         FOREIGN KEY (PostingDateKey)
-        REFERENCES dw_HR.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_FactJobPostingLifecycle_FilledDateKey
         FOREIGN KEY (FilledDateKey)
-        REFERENCES dw_HR.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_FactJobPostingLifecycle_ClosingDateKey
         FOREIGN KEY (ClosingDateKey)
-        REFERENCES dw_HR.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
 
     -- Measure value constraints (non-negative)
     CONSTRAINT CK_FactJobPostingLifecycle_DaysOpen

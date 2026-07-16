@@ -809,108 +809,10 @@ CREATE TABLE stg_HR.stg_transit_agency_employees_2024
     total_part_time_employee_count NUMERIC(18,2)
 );
 
-CREATE TABLE stg_HR.stg_transit_agency_employees_2025
-(
-    ntd_id VARCHAR(50),
-    agency_name VARCHAR(255),
-    reporter_type VARCHAR(100),
-    reporting_module VARCHAR(100),
-    mode VARCHAR(50),
-    tos VARCHAR(50),
-
-    full_time_operator_vehicle_operations_hours_worked NUMERIC(18,2),
-    full_time_non_operator_vehicle_operations_hours_worked NUMERIC(18,2),
-    total_full_time_vehicle_operations_hours_worked NUMERIC(18,2),
-
-    full_time_operator_vehicle_maintenance_hours_worked NUMERIC(18,2),
-    full_time_non_operator_vehicle_maintenance_hours_worked NUMERIC(18,2),
-    total_full_time_vehicle_maintenance_hours_worked NUMERIC(18,2),
-
-    full_time_operator_facility_maintenance_hours_worked NUMERIC(18,2),
-    full_time_non_operator_facility_maintenance_hours_worked NUMERIC(18,2),
-    total_full_time_facility_maintenance_hours_worked NUMERIC(18,2),
-
-    full_time_operator_general_administration_hours_worked NUMERIC(18,2),
-    full_time_non_operator_general_administration_hours_worked NUMERIC(18,2),
-    total_full_time_general_administration_hours_worked NUMERIC(18,2),
-
-    total_full_time_operator_operating_labor_hours_worked NUMERIC(18,2),
-    total_full_time_non_operator_operating_labor_hours_worked NUMERIC(18,2),
-    total_full_time_operating_labor_hours_worked NUMERIC(18,2),
-
-    total_full_time_operator_capital_labor_hours_worked NUMERIC(18,2),
-    total_full_time_non_operator_capital_labor_hours_worked NUMERIC(18,2),
-    total_full_time_capital_labor_hours_worked NUMERIC(18,2),
-
-    total_full_time_operator_hours_worked NUMERIC(18,2),
-    total_full_time_non_operator_hours_worked NUMERIC(18,2),
-    total_full_time_hours_worked NUMERIC(18,2),
-
-
-    full_time_operator_vehicle_operations_employee_count NUMERIC(18,2),
-    full_time_non_operator_vehicle_operations_employee_count NUMERIC(18,2),
-    total_full_time_vehicle_operations_employee_count NUMERIC(18,2),
-
-    full_time_operator_vehicle_maintenance_employee_count NUMERIC(18,2),
-    full_time_non_operator_vehicle_maintenance_employee_count NUMERIC(18,2),
-    total_full_time_vehicle_maintenance_employee_count NUMERIC(18,2),
-
-    full_time_operator_facility_maintenance_employee_count NUMERIC(18,2),
-    full_time_non_operator_facility_maintenance_employee_count NUMERIC(18,2),
-    total_full_time_facility_maintenance_employee_count NUMERIC(18,2),
-
-    full_time_operator_general_administration_employee_count NUMERIC(18,2),
-    full_time_non_operator_general_administration_employee_count NUMERIC(18,2),
-    total_full_time_general_administration_employee_count NUMERIC(18,2),
-
-    total_full_time_operator_employee_count NUMERIC(18,2),
-    total_full_time_non_operator_employee_count NUMERIC(18,2),
-    total_full_time_employee_count NUMERIC(18,2),
-
-
-    part_time_operator_vehicle_operations_hours_worked NUMERIC(18,2),
-    part_time_non_operator_vehicle_operations_hours_worked NUMERIC(18,2),
-    total_part_time_vehicle_operations_hours_worked NUMERIC(18,2),
-
-    part_time_operator_vehicle_maintenance_hours_worked NUMERIC(18,2),
-    part_time_non_operator_vehicle_maintenance_hours_worked NUMERIC(18,2),
-    total_part_time_vehicle_maintenance_hours_worked NUMERIC(18,2),
-
-    part_time_operator_facility_maintenance_hours_worked NUMERIC(18,2),
-    part_time_non_operator_facility_maintenance_hours_worked NUMERIC(18,2),
-    total_part_time_facility_maintenance_hours_worked NUMERIC(18,2),
-
-    part_time_operator_general_administration_hours_worked NUMERIC(18,2),
-    part_time_non_operator_general_administration_hours_worked NUMERIC(18,2),
-    total_part_time_general_administration_hours_worked NUMERIC(18,2),
-
-    total_part_time_operator_hours_worked NUMERIC(18,2),
-    total_part_time_non_operator_hours_worked NUMERIC(18,2),
-    total_part_time_hours_worked NUMERIC(18,2),
-
-
-    part_time_operator_vehicle_operations_employee_count NUMERIC(18,2),
-    part_time_non_operator_vehicle_operations_employee_count NUMERIC(18,2),
-    total_part_time_vehicle_operations_employee_count NUMERIC(18,2),
-
-    part_time_operator_vehicle_maintenance_employee_count NUMERIC(18,2),
-    part_time_non_operator_vehicle_maintenance_employee_count NUMERIC(18,2),
-    total_part_time_vehicle_maintenance_employee_count NUMERIC(18,2),
-
-    part_time_operator_facility_maintenance_employee_count NUMERIC(18,2),
-    part_time_non_operator_facility_maintenance_employee_count NUMERIC(18,2),
-    total_part_time_facility_maintenance_employee_count NUMERIC(18,2),
-
-    part_time_operator_general_administration_employee_count NUMERIC(18,2),
-    part_time_non_operator_general_administration_employee_count NUMERIC(18,2),
-    total_part_time_general_administration_employee_count NUMERIC(18,2),
-
-    total_part_time_operator_employee_count NUMERIC(18,2),
-    total_part_time_non_operator_employee_count NUMERIC(18,2),
-    total_part_time_employee_count NUMERIC(18,2)
-);
-
-
+-- ============================================================
+-- STAGING JOB OPENINGS TABLE
+-- Cleaned and transformed from raw table
+-- ============================================================
 CREATE TABLE stg_HR.stg_job_openings
 (
     opening_id VARCHAR(100) NOT NULL,
@@ -921,8 +823,10 @@ CREATE TABLE stg_HR.stg_job_openings
     agency_name VARCHAR(255),
     reporter_type VARCHAR(100),
     reporting_module VARCHAR(100),
-    organization_type VARCHAR(100),
-    city_state_region VARCHAR(255),
+    organization_type VARCHAR(255),
+    city VARCHAR(100),
+    state VARCHAR(50),
+    region VARCHAR(50),
     mode_code VARCHAR(50),
     mode_name VARCHAR(100),
     tos VARCHAR(50),
@@ -931,10 +835,12 @@ CREATE TABLE stg_HR.stg_job_openings
     operator_status VARCHAR(50),
     employment_type VARCHAR(50),
     position_title VARCHAR(255),
+    department VARCHAR(255),
     open_positions INTEGER,
     salary_min_hourly NUMERIC(18,2),
     salary_max_hourly NUMERIC(18,2),
     salary_mid_hourly NUMERIC(18,2),
+    salary_type VARCHAR(50),
     posting_status VARCHAR(50),
     closing_date DATE,
     filled_date DATE,
@@ -951,8 +857,8 @@ CREATE TABLE stg_HR.stg_job_openings
     CONSTRAINT CK_JobOpenings_SalariesPositive CHECK ((salary_min_hourly IS NULL OR salary_min_hourly >= 0) AND (salary_max_hourly IS NULL OR salary_max_hourly >= 0)),
     CONSTRAINT CK_JobOpenings_DaysOpen CHECK (days_open IS NULL OR days_open >= 0),
     CONSTRAINT CK_JobOpenings_HiredCount CHECK (hired_count IS NULL OR hired_count >= 0),
-    CONSTRAINT CK_JobOpenings_EmploymentType CHECK (employment_type IN ('Full-Time', 'Part-Time')),
-    CONSTRAINT CK_JobOpenings_PostingStatus CHECK (posting_status IN ('Open', 'Closed', 'Filled', 'Withdrawn')),
+    CONSTRAINT CK_JobOpenings_EmploymentType CHECK (employment_type IN ('Full-Time', 'Part-Time', 'Temporary', 'Seasonal', 'Contract')),
+    CONSTRAINT CK_JobOpenings_PostingStatus CHECK (posting_status IN ('Open', 'Closed', 'Filled', 'Withdrawn', 'Cancelled')),
     CONSTRAINT CK_JobOpenings_DepartmentClass CHECK (ntd_labor_object_class IN ('Vehicle Operations', 'Vehicle Maintenance', 'Facility Maintenance', 'General Administration')),
     CONSTRAINT CK_JobOpenings_DateSequence CHECK (closing_date IS NULL OR posting_date <= closing_date)
 );

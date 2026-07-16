@@ -48,8 +48,18 @@ BEGIN
 
     DECLARE @RowsInserted INT = 0;
     DECLARE @RowsDeleted INT = 0;
-    DECLARE @LoadStartTime DATETIME = GETDATE();
+    DECLARE @LoadStartTime DATETIME2 = SYSDATETIME();
+    DECLARE @LoadDate DATE = CAST(GETDATE() AS DATE);
     DECLARE @TransactionStarted BIT = 0;
+    DECLARE @AuditId INT;
+    DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
+
+    -- Log start of audit
+    INSERT INTO dw_common.etl_load_audit (
+        procedure_name, load_date, load_start_time, status
+    )
+    VALUES ('dw_transport.sp_Load_Fact_Annual_Service_Performance', @LoadDate, @LoadStartTime, 'IN_PROGRESS');
+    SET @AuditId = SCOPE_IDENTITY();
 
     BEGIN TRY
         IF @@TRANCOUNT = 0
@@ -362,7 +372,7 @@ BEGIN
         DECLARE @DistinctNTDIds INT = (SELECT COUNT(DISTINCT ntd_id) FROM #AnnualPerformanceStaging);
         DECLARE @DistinctUACECodes INT = (SELECT COUNT(DISTINCT uace_code) FROM #AnnualPerformanceStaging);
         DECLARE @SampleNTDID VARCHAR(50) = (SELECT TOP 1 ntd_id FROM #AnnualPerformanceStaging WHERE ntd_id IS NOT NULL);
-        DECLARE @DimAgencyCount INT = (SELECT COUNT(*) FROM dw_transport.DimAgency);
+        DECLARE @DimAgencyCount INT = (SELECT COUNT(*) FROM dw_common.DimAgency);
         DECLARE @DimUrbanAreaCount INT = (SELECT COUNT(*) FROM dw_transport.DimUrbanArea);
         PRINT CONCAT('Staging records to load: ', @StagingRowCount);
         PRINT CONCAT('Distinct NTD IDs: ', @DistinctNTDIds);
@@ -382,17 +392,17 @@ BEGIN
             DELETE FROM dw_transport.Fact_Annual_Service_Performance
             WHERE EXISTS (
                 SELECT 1 FROM #AnnualPerformanceStaging aps
-                LEFT JOIN dw_transport.DimDate dd
+                LEFT JOIN dw_common.DimDate dd
                     ON dd.CalendarYear = aps.ReportYear
                     AND dd.CalendarMonth = 1
                     AND dd.CalendarDay = 1
-                LEFT JOIN dw_transport.DimAgency da
+                LEFT JOIN dw_common.DimAgency da
                     ON da.NTD_ID = aps.ntd_id
                     AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) >= da.EffectiveDate
                     AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) < da.ExpirationDate
-                LEFT JOIN dw_transport.DimMode dm
+                LEFT JOIN dw_common.DimMode dm
                     ON dm.ModeCode = aps.mode
-                LEFT JOIN dw_transport.DimServiceType dst
+                LEFT JOIN dw_common.DimServiceType dst
                     ON dst.TOSCode = aps.type_of_service
                 WHERE Fact_Annual_Service_Performance.DateKey = COALESCE(dd.DateKey, -1)
                 AND Fact_Annual_Service_Performance.AgencyKey = COALESCE(da.AgencyKey, -1)
@@ -467,19 +477,19 @@ BEGIN
             FROM #AnnualPerformanceStaging
             GROUP BY ReportYear, ntd_id, uace_code, mode, type_of_service
         ) aps
-        LEFT JOIN dw_transport.DimDate dd
+        LEFT JOIN dw_common.DimDate dd
             ON dd.CalendarYear = aps.ReportYear
             AND dd.CalendarMonth = 1
             AND dd.CalendarDay = 1
         -- CRITIC #3 FIX: Use effective date range instead of CurrentFlag
         -- NOTE: Use dd.FullDate ONLY if dd matched; otherwise use a default date or GETDATE()
-        LEFT JOIN dw_transport.DimAgency da
+        LEFT JOIN dw_common.DimAgency da
             ON da.NTD_ID = aps.ntd_id
             AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) >= da.EffectiveDate
             AND COALESCE(dd.FullDate, CAST(CONCAT(aps.ReportYear, '-01-01') AS DATE)) < da.ExpirationDate
-        LEFT JOIN dw_transport.DimMode dm
+        LEFT JOIN dw_common.DimMode dm
             ON dm.ModeCode = aps.mode
-        LEFT JOIN dw_transport.DimServiceType dst
+        LEFT JOIN dw_common.DimServiceType dst
             ON dst.TOSCode = aps.type_of_service
         -- CRITIC #3 FIX: Use effective date range for historical accuracy
         LEFT JOIN dw_transport.DimUrbanArea dua
@@ -521,6 +531,15 @@ BEGIN
         DROP TABLE #VRH;
         DROP TABLE #VOMS;
 
+        -- Update audit table with success
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            rows_processed = @RowsInserted + @RowsDeleted,
+            rows_inserted = @RowsInserted,
+            rows_deleted = @RowsDeleted,
+            status = 'SUCCESS'
+        WHERE audit_id = @AuditId;
+
         IF @TransactionStarted = 1
             COMMIT TRANSACTION;
 
@@ -534,9 +553,18 @@ BEGIN
         IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
 
+        SET @ErrorMsg = ERROR_MESSAGE();
+
+        -- Log failure
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            status = 'FAILED',
+            error_message = @ErrorMsg
+        WHERE audit_id = @AuditId;
+
         PRINT CONCAT(
             'ERROR in sp_Load_Fact_Annual_Service_Performance: ',
-            ERROR_MESSAGE()
+            @ErrorMsg
         );
         THROW;
     END CATCH
@@ -563,8 +591,19 @@ BEGIN
     SET XACT_ABORT ON;
 
     DECLARE @RowsInserted INT = 0;
-    DECLARE @LoadStartTime DATETIME = GETDATE();
+    DECLARE @RowsDeleted INT = 0;
+    DECLARE @LoadStartTime DATETIME2 = SYSDATETIME();
+    DECLARE @LoadDate DATE = CAST(GETDATE() AS DATE);
     DECLARE @TransactionStarted BIT = 0;
+    DECLARE @AuditId INT;
+    DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
+
+    -- Log start of audit
+    INSERT INTO dw_common.etl_load_audit (
+        procedure_name, load_date, load_start_time, status
+    )
+    VALUES ('dw_transport.sp_Load_Fact_Major_Safety_Event', @LoadDate, @LoadStartTime, 'IN_PROGRESS');
+    SET @AuditId = SCOPE_IDENTITY();
 
     BEGIN TRY
         IF @@TRANCOUNT = 0
@@ -654,16 +693,16 @@ BEGIN
             CASE WHEN mse.evacuation = 1 THEN 1 ELSE 0 END AS evacuation_count,
             mse.property_damage_amount
         FROM stg_transport.stg_major_safety_event mse
-        LEFT JOIN dw_transport.DimDate dd
+        LEFT JOIN dw_common.DimDate dd
             ON dd.FullDate = mse.event_date
         -- CRITIC #3 FIX: SCD Type 2 effective date range lookup
-        LEFT JOIN dw_transport.DimAgency da
+        LEFT JOIN dw_common.DimAgency da
             ON da.NTD_ID = mse.ntd_id
             AND mse.event_date >= da.EffectiveDate
             AND mse.event_date < da.ExpirationDate
-        LEFT JOIN dw_transport.DimMode dm
+        LEFT JOIN dw_common.DimMode dm
             ON dm.ModeCode = mse.mode
-        LEFT JOIN dw_transport.DimServiceType dst
+        LEFT JOIN dw_common.DimServiceType dst
             ON dst.TOSCode = mse.type_of_service_code
         -- CRITIC #3 FIX: SCD Type 2 effective date range lookup
         LEFT JOIN dw_transport.DimUrbanArea dua
@@ -691,7 +730,8 @@ BEGIN
         BEGIN
             DELETE FROM dw_transport.Fact_Major_Safety_Event
             WHERE ETL_BatchID = @BatchID;
-            PRINT CONCAT('Deleted ', @@ROWCOUNT, ' rows for reload (BatchID: ', @BatchID, ')');
+            SET @RowsDeleted = @@ROWCOUNT;
+            PRINT CONCAT('Deleted ', @RowsDeleted, ' rows for reload (BatchID: ', @BatchID, ')');
         END
 
         -- ============================================================
@@ -761,6 +801,15 @@ BEGIN
 
         DROP TABLE #ResolvedSafetyEvents;
 
+        -- Update audit table with success
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            rows_processed = @RowsInserted + @RowsDeleted,
+            rows_inserted = @RowsInserted,
+            rows_deleted = @RowsDeleted,
+            status = 'SUCCESS'
+        WHERE audit_id = @AuditId;
+
         IF @TransactionStarted = 1
             COMMIT TRANSACTION;
 
@@ -774,9 +823,18 @@ BEGIN
         IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
 
+        SET @ErrorMsg = ERROR_MESSAGE();
+
+        -- Log failure
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            status = 'FAILED',
+            error_message = @ErrorMsg
+        WHERE audit_id = @AuditId;
+
         PRINT CONCAT(
             'ERROR in sp_Load_Fact_Major_Safety_Event: ',
-            ERROR_MESSAGE()
+            @ErrorMsg
         );
         THROW;
     END CATCH
@@ -803,8 +861,19 @@ BEGIN
     SET XACT_ABORT ON;
 
     DECLARE @RowsInserted INT = 0;
-    DECLARE @LoadStartTime DATETIME = GETDATE();
+    DECLARE @RowsDeleted INT = 0;
+    DECLARE @LoadStartTime DATETIME2 = SYSDATETIME();
+    DECLARE @LoadDate DATE = CAST(GETDATE() AS DATE);
     DECLARE @TransactionStarted BIT = 0;
+    DECLARE @AuditId INT;
+    DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
+
+    -- Log start of audit
+    INSERT INTO dw_common.etl_load_audit (
+        procedure_name, load_date, load_start_time, status
+    )
+    VALUES ('dw_transport.sp_Load_Fact_Service_Availability', @LoadDate, @LoadStartTime, 'IN_PROGRESS');
+    SET @AuditId = SCOPE_IDENTITY();
 
     BEGIN TRY
         IF @@TRANCOUNT = 0
@@ -821,7 +890,8 @@ BEGIN
         BEGIN
             DELETE FROM dw_transport.Fact_Service_Availability
             WHERE ETL_BatchID = @BatchID;
-            PRINT CONCAT('Deleted ', @@ROWCOUNT, ' rows for reload (BatchID: ', @BatchID, ')');
+            SET @RowsDeleted = @@ROWCOUNT;
+            PRINT CONCAT('Deleted ', @RowsDeleted, ' rows for reload (BatchID: ', @BatchID, ')');
         END
 
         INSERT INTO dw_transport.Fact_Service_Availability (
@@ -871,19 +941,19 @@ BEGIN
             FROM stg_transport.stg_agency_mode_service
         ) sams
         -- Use SCD Type 2 effective date range instead of CurrentFlag
-        LEFT JOIN dw_transport.DimAgency da
+        LEFT JOIN dw_common.DimAgency da
             ON da.NTD_ID = sams.ntd_id
             AND sams.start_service_date >= da.EffectiveDate
             AND sams.start_service_date < da.ExpirationDate
-        LEFT JOIN dw_transport.DimMode dm
+        LEFT JOIN dw_common.DimMode dm
             ON dm.ModeCode = sams.mode
-        LEFT JOIN dw_transport.DimServiceType dst
+        LEFT JOIN dw_common.DimServiceType dst
             ON dst.TOSCode = sams.type_of_service_code
-        LEFT JOIN dw_transport.DimDate dd_commitment
+        LEFT JOIN dw_common.DimDate dd_commitment
             ON dd_commitment.FullDate = sams.commitment_date
-        LEFT JOIN dw_transport.DimDate dd_start
+        LEFT JOIN dw_common.DimDate dd_start
             ON dd_start.FullDate = sams.start_service_date
-        LEFT JOIN dw_transport.DimDate dd_end
+        LEFT JOIN dw_common.DimDate dd_end
             ON dd_end.FullDate = sams.end_service_date
         -- Exclude administrative rows that aren't actual service periods
         -- Require a valid start date (actual service must have known start date)
@@ -907,6 +977,15 @@ BEGIN
 
         SET @RowsInserted = @@ROWCOUNT;
 
+        -- Update audit table with success
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            rows_processed = @RowsInserted + @RowsDeleted,
+            rows_inserted = @RowsInserted,
+            rows_deleted = @RowsDeleted,
+            status = 'SUCCESS'
+        WHERE audit_id = @AuditId;
+
         IF @TransactionStarted = 1
             COMMIT TRANSACTION;
 
@@ -920,9 +999,18 @@ BEGIN
         IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
 
+        SET @ErrorMsg = ERROR_MESSAGE();
+
+        -- Log failure
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            status = 'FAILED',
+            error_message = @ErrorMsg
+        WHERE audit_id = @AuditId;
+
         PRINT CONCAT(
             'ERROR in sp_Load_Fact_Service_Availability: ',
-            ERROR_MESSAGE()
+            @ErrorMsg
         );
         THROW;
     END CATCH
@@ -949,8 +1037,18 @@ BEGIN
 
     DECLARE @RowsInserted INT = 0;
     DECLARE @RowsUpdated INT = 0;
-    DECLARE @LoadStartTime DATETIME = GETDATE();
+    DECLARE @LoadStartTime DATETIME2 = SYSDATETIME();
+    DECLARE @LoadDate DATE = CAST(GETDATE() AS DATE);
     DECLARE @TransactionStarted BIT = 0;
+    DECLARE @AuditId INT;
+    DECLARE @ErrorMsg NVARCHAR(MAX) = NULL;
+
+    -- Log start of audit
+    INSERT INTO dw_common.etl_load_audit (
+        procedure_name, load_date, load_start_time, status
+    )
+    VALUES ('dw_transport.sp_Load_Fact_Service_Lifecycle_Accumulating', @LoadDate, @LoadStartTime, 'IN_PROGRESS');
+    SET @AuditId = SCOPE_IDENTITY();
 
     BEGIN TRY
         IF @@TRANCOUNT = 0
@@ -1037,7 +1135,7 @@ BEGIN
                     ORDER BY aa.DateKey ASC
                 ) AS FirstRank
             FROM dw_transport.Fact_Annual_Service_Performance aa
-            JOIN dw_transport.DimDate dd
+            JOIN dw_common.DimDate dd
                 ON aa.DateKey = dd.DateKey
         ),
         -- Pick primary urban area (most frequently reported)
@@ -1377,13 +1475,22 @@ BEGIN
 
         DROP TABLE #ServiceLifecycleAgg;
 
+        -- Update audit table with success
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            rows_processed = @RowsInserted + @RowsUpdated,
+            rows_inserted = @RowsInserted,
+            rows_updated = @RowsUpdated,
+            status = 'SUCCESS'
+        WHERE audit_id = @AuditId;
+
         IF @TransactionStarted = 1
             COMMIT TRANSACTION;
 
         PRINT CONCAT(
-            'sp_Load_Fact_Service_Lifecycle_Accumulating: ',
-            @RowsInserted, ' rows inserted, ',
-            @RowsUpdated, ' rows updated'
+            'sp_Load_Fact_Service_Lifecycle_Accumulating: Inserted ',
+            @RowsInserted, ' rows, updated ',
+            @RowsUpdated, ' rows'
         );
 
     END TRY
@@ -1391,9 +1498,18 @@ BEGIN
         IF @TransactionStarted = 1 AND @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
 
+        SET @ErrorMsg = ERROR_MESSAGE();
+
+        -- Log failure
+        UPDATE dw_common.etl_load_audit
+        SET load_end_time = SYSDATETIME(),
+            status = 'FAILED',
+            error_message = @ErrorMsg
+        WHERE audit_id = @AuditId;
+
         PRINT CONCAT(
             'ERROR in sp_Load_Fact_Service_Lifecycle_Accumulating: ',
-            ERROR_MESSAGE()
+            @ErrorMsg
         );
         THROW;
     END CATCH

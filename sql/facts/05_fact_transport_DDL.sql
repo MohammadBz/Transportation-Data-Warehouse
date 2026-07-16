@@ -101,16 +101,16 @@ CREATE TABLE dw_transport.Fact_Annual_Service_Performance (
     -- Foreign key constraints to dimensions
     CONSTRAINT FK_Fact_ASP_DateKey
         FOREIGN KEY (DateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_ASP_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_transport.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
     CONSTRAINT FK_Fact_ASP_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_transport.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
     CONSTRAINT FK_Fact_ASP_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_transport.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
     CONSTRAINT FK_Fact_ASP_UrbanAreaKey
         FOREIGN KEY (UrbanAreaKey)
         REFERENCES dw_transport.DimUrbanArea (UrbanAreaKey),
@@ -234,16 +234,16 @@ CREATE TABLE dw_transport.Fact_Major_Safety_Event (
     -- Foreign key constraints
     CONSTRAINT FK_Fact_MSE_EventDateKey
         FOREIGN KEY (EventDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_MSE_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_transport.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
     CONSTRAINT FK_Fact_MSE_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_transport.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
     CONSTRAINT FK_Fact_MSE_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_transport.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
     CONSTRAINT FK_Fact_MSE_UrbanAreaKey
         FOREIGN KEY (UrbanAreaKey)
         REFERENCES dw_transport.DimUrbanArea (UrbanAreaKey),
@@ -371,22 +371,22 @@ CREATE TABLE dw_transport.Fact_Service_Availability (
     -- Foreign key constraints
     CONSTRAINT FK_Fact_SA_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_transport.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
     CONSTRAINT FK_Fact_SA_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_transport.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
     CONSTRAINT FK_Fact_SA_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_transport.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
     CONSTRAINT FK_Fact_SA_CommitmentDateKey
         FOREIGN KEY (CommitmentDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SA_StartDateKey
         FOREIGN KEY (StartDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SA_EndDateKey
         FOREIGN KEY (EndDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
 
     -- Date range integrity: commitment <= start <= end
     CONSTRAINT CK_Fact_SA_DateRange
@@ -522,40 +522,40 @@ CREATE TABLE dw_transport.Fact_Service_Lifecycle_Accumulating (
     -- Foreign key constraints
     CONSTRAINT FK_Fact_SLA_AgencyKey
         FOREIGN KEY (AgencyKey)
-        REFERENCES dw_transport.DimAgency (AgencyKey),
+        REFERENCES dw_common.DimAgency (AgencyKey),
     CONSTRAINT FK_Fact_SLA_ModeKey
         FOREIGN KEY (ModeKey)
-        REFERENCES dw_transport.DimMode (ModeKey),
+        REFERENCES dw_common.DimMode (ModeKey),
     CONSTRAINT FK_Fact_SLA_ServiceTypeKey
         FOREIGN KEY (ServiceTypeKey)
-        REFERENCES dw_transport.DimServiceType (ServiceTypeKey),
+        REFERENCES dw_common.DimServiceType (ServiceTypeKey),
     CONSTRAINT FK_Fact_SLA_UrbanAreaKey
         FOREIGN KEY (UrbanAreaKey)
         REFERENCES dw_transport.DimUrbanArea (UrbanAreaKey),
     CONSTRAINT FK_Fact_SLA_FirstObservedDateKey
         FOREIGN KEY (FirstObservedDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SLA_CommitmentDateKey
         FOREIGN KEY (CommitmentDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SLA_PeakUPTDateKey
         FOREIGN KEY (PeakUPTDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SLA_PeakVRMDateKey
         FOREIGN KEY (PeakVRMDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SLA_PeakVRHDateKey
         FOREIGN KEY (PeakVRHDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SLA_PeakVOMSDateKey
         FOREIGN KEY (PeakVOMSDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SLA_LatestObservedDateKey
         FOREIGN KEY (LatestObservedDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
     CONSTRAINT FK_Fact_SLA_EndServiceDateKey
         FOREIGN KEY (EndServiceDateKey)
-        REFERENCES dw_transport.DimDate (DateKey),
+        REFERENCES dw_common.DimDate (DateKey),
 
     -- Measure value constraints (non-negative)
     CONSTRAINT CK_Fact_SLA_YearsInService

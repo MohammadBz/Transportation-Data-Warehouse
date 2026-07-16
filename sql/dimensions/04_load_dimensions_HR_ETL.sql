@@ -6,6 +6,7 @@
 -- DESC:     Optimized ETL Procedures for Remaining HR Dimensions
 --           Processes: DimEmploymentType, DimDepartment, DimJobRole
 --           Source: stg_HR.stg_job_openings
+--           Uses: dw_common.etl_load_audit for audit logging
 -- ============================================================
 
 USE [TransportationDB];
@@ -14,36 +15,169 @@ GO
 -- ============================================================
 -- STEP 1: LOAD DIMEMPLOYMENTTYPE (Dynamic Sync from Staging)
 -- ============================================================
+-- ============================================================
+-- STEP 1: LOAD DIMEMPLOYMENTTYPE
+-- Dynamic Sync from Staging
+-- One row per EmploymentTypeCode
+-- ============================================================
+
 CREATE OR ALTER PROCEDURE dw_HR.sp_load_dim_employment_type
     @LoadDate DATE = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-    IF @LoadDate IS NULL SET @LoadDate = CAST(GETDATE() AS DATE);
 
-    -- استخراج مقادیر یکتا از فیلد EmploymentType جدول استیجینگ و درج در جدول بعد
-    INSERT INTO dw_HR.DimEmploymentType (EmploymentTypeCode, EmploymentTypeName, IsFullTime)
-    SELECT DISTINCT
-        CASE
-            WHEN EmploymentType LIKE '%Full%' OR EmploymentType = 'FT' THEN 'FT'
-            WHEN EmploymentType LIKE '%Part%' OR EmploymentType = 'PT' THEN 'PT'
-            WHEN EmploymentType LIKE '%Contract%' OR EmploymentType = 'CT' THEN 'CT'
-            ELSE 'N/A'
-        END AS EmploymentTypeCode,
-        LTRIM(RTRIM(EmploymentType)) AS EmploymentTypeName,
-        CASE
-            WHEN EmploymentType LIKE '%Full%' THEN 1
-            WHEN EmploymentType LIKE '%Part%' THEN 0
-            ELSE NULL
-        END AS IsFullTime
-    FROM stg_HR.stg_job_openings src
-    WHERE src.EmploymentType IS NOT NULL
-      AND LTRIM(RTRIM(src.EmploymentType)) != ''
-      AND NOT EXISTS (
-          SELECT 1
-          FROM dw_HR.DimEmploymentType target
-          WHERE target.EmploymentTypeName = LTRIM(RTRIM(src.EmploymentType))
-      );
+    DECLARE @AuditId INT;
+    DECLARE @StartTime DATETIME2 = SYSDATETIME();
+    DECLARE @RowsInserted INT = 0;
+    DECLARE @ErrorMsg NVARCHAR(4000);
+
+    IF @LoadDate IS NULL
+        SET @LoadDate = CAST(GETDATE() AS DATE);
+
+    -- Log start of audit
+    INSERT INTO dw_common.etl_load_audit
+    (
+        procedure_name,
+        load_date,
+        load_start_time,
+        status
+    )
+    VALUES
+    (
+        'sp_load_dim_employment_type',
+        @LoadDate,
+        @StartTime,
+        'IN_PROGRESS'
+    );
+
+    SET @AuditId = SCOPE_IDENTITY();
+
+    BEGIN TRY
+
+        /*
+            Normalize and classify source employment types.
+
+            The final result contains exactly one row
+            for each EmploymentTypeCode.
+        */
+        ;WITH ClassifiedEmploymentTypes AS
+        (
+            SELECT
+                EmploymentTypeCode,
+                EmploymentTypeName,
+                IsFullTime,
+
+                ROW_NUMBER() OVER
+                (
+                    PARTITION BY EmploymentTypeCode
+                    ORDER BY EmploymentTypeName
+                ) AS RowNum
+
+            FROM
+            (
+                SELECT
+                    CASE
+                        WHEN UPPER(LTRIM(RTRIM(employment_type)))
+                                LIKE '%FULL%'
+                             OR UPPER(LTRIM(RTRIM(employment_type))) = 'FT'
+                            THEN 'FT'
+
+                        WHEN UPPER(LTRIM(RTRIM(employment_type)))
+                                LIKE '%PART%'
+                             OR UPPER(LTRIM(RTRIM(employment_type))) = 'PT'
+                            THEN 'PT'
+
+                        WHEN UPPER(LTRIM(RTRIM(employment_type)))
+                                LIKE '%TEMP%'
+                             OR UPPER(LTRIM(RTRIM(employment_type))) = 'T'
+                            THEN 'T'
+
+                        WHEN UPPER(LTRIM(RTRIM(employment_type)))
+                                LIKE '%SEASONAL%'
+                             OR UPPER(LTRIM(RTRIM(employment_type))) = 'S'
+                            THEN 'S'
+
+                        WHEN UPPER(LTRIM(RTRIM(employment_type)))
+                                LIKE '%CONTRACT%'
+                             OR UPPER(LTRIM(RTRIM(employment_type))) = 'C'
+                            THEN 'C'
+
+                        ELSE 'N/A'
+                    END AS EmploymentTypeCode,
+
+                    LTRIM(RTRIM(employment_type))
+                        AS EmploymentTypeName,
+
+                    CASE
+                        WHEN UPPER(LTRIM(RTRIM(employment_type)))
+                                LIKE '%FULL%'
+                            THEN 1
+
+                        WHEN UPPER(LTRIM(RTRIM(employment_type)))
+                                LIKE '%PART%'
+                            THEN 0
+
+                        ELSE NULL
+                    END AS IsFullTime
+
+                FROM stg_HR.stg_job_openings
+
+                WHERE employment_type IS NOT NULL
+                  AND LTRIM(RTRIM(employment_type)) <> ''
+            ) SourceData
+        )
+
+        INSERT INTO dw_HR.DimEmploymentType
+        (
+            EmploymentTypeCode,
+            EmploymentTypeName,
+            IsFullTime
+        )
+        SELECT
+            src.EmploymentTypeCode,
+            src.EmploymentTypeName,
+            src.IsFullTime
+
+        FROM ClassifiedEmploymentTypes src
+
+        WHERE src.RowNum = 1
+
+          AND NOT EXISTS
+          (
+              SELECT 1
+              FROM dw_HR.DimEmploymentType target
+              WHERE target.EmploymentTypeCode =
+                    src.EmploymentTypeCode
+          );
+
+        SET @RowsInserted = @@ROWCOUNT;
+
+        -- Log success
+        UPDATE dw_common.etl_load_audit
+        SET
+            load_end_time = SYSDATETIME(),
+            rows_inserted = @RowsInserted,
+            status = 'SUCCESS'
+        WHERE audit_id = @AuditId;
+
+    END TRY
+
+    BEGIN CATCH
+
+        SET @ErrorMsg = ERROR_MESSAGE();
+
+        UPDATE dw_common.etl_load_audit
+        SET
+            load_end_time = SYSDATETIME(),
+            status = 'FAILED',
+            error_message = @ErrorMsg
+        WHERE audit_id = @AuditId;
+
+        THROW;
+
+    END CATCH;
+
 END;
 GO
 
@@ -55,31 +189,106 @@ CREATE OR ALTER PROCEDURE dw_HR.sp_load_dim_department
 AS
 BEGIN
     SET NOCOUNT ON;
-    IF @LoadDate IS NULL SET @LoadDate = CAST(GETDATE() AS DATE);
 
-    -- استفاده از دستور MERGE برای به‌روزرسانی نام دپارتمان‌ها یا درج ساختارهای جدید
-    MERGE dw_HR.DimDepartment AS Target
-    USING (
-        SELECT DISTINCT
-            UPPER(LEFT(LTRIM(RTRIM(Department)), 50)) AS DepartmentCode,
-            LEFT(LTRIM(RTRIM(Department)), 255) AS DepartmentName,
-            LEFT(LTRIM(RTRIM(ISNULL(NTDLaborObjectClass, 'Unclassified'))), 100) AS NTDLaborObjectClass
-        FROM stg_HR.stg_job_openings
-        WHERE Department IS NOT NULL AND LTRIM(RTRIM(Department)) != ''
-    ) AS Source
-    ON (Target.DepartmentCode = Source.DepartmentCode)
+    DECLARE @AuditId INT;
+    DECLARE @StartTime DATETIME2 = SYSDATETIME();
+    DECLARE @RowsInserted INT = 0;
+    DECLARE @ErrorMsg NVARCHAR(4000);
 
-    WHEN MATCHED AND (Target.DepartmentName != Source.DepartmentName OR ISNULL(Target.NTDLaborObjectClass,'') != Source.NTDLaborObjectClass) THEN
-        UPDATE SET
-            Target.DepartmentName = Source.DepartmentName,
-            Target.NTDLaborObjectClass = Source.NTDLaborObjectClass
+    IF @LoadDate IS NULL
+        SET @LoadDate = CAST(GETDATE() AS DATE);
 
-    WHEN NOT MATCHED THEN
-        INSERT (DepartmentCode, DepartmentName, NTDLaborObjectClass)
-        VALUES (Source.DepartmentCode, Source.DepartmentName, Source.NTDLaborObjectClass);
+    -- Audit start
+    INSERT INTO dw_common.etl_load_audit
+    (
+        procedure_name,
+        load_date,
+        load_start_time,
+        status
+    )
+    VALUES
+    (
+        'sp_load_dim_department_hardcoded',
+        @LoadDate,
+        @StartTime,
+        'IN_PROGRESS'
+    );
+    SET @AuditId = SCOPE_IDENTITY();
+
+    BEGIN TRY
+        -- Hardcoded department names using UNION ALL
+        ;WITH DepartmentList AS (
+            SELECT 'Administration' AS DepartmentName
+            UNION ALL
+            SELECT 'Capital'
+            UNION ALL
+            SELECT 'Customer Service'
+            UNION ALL
+            SELECT 'Facility Maintenance'
+            UNION ALL
+            SELECT 'Finance'
+            UNION ALL
+            SELECT 'General Administration'
+            UNION ALL
+            SELECT 'Human Resources'
+            UNION ALL
+            SELECT 'Information Technology'
+            UNION ALL
+            SELECT 'Maintenance'
+            UNION ALL
+            SELECT 'Operating'
+            UNION ALL
+            SELECT 'Operations'
+            UNION ALL
+            SELECT 'Planning'
+            UNION ALL
+            SELECT 'Safety'
+            UNION ALL
+            SELECT 'Total'
+            UNION ALL
+            SELECT 'Vehicle Maintenance'
+            UNION ALL
+            SELECT 'Vehicle Operations'
+        ),
+        Prepared AS (
+            SELECT
+                DepartmentName,
+                UPPER(LEFT(LTRIM(RTRIM(DepartmentName)), 50)) AS DepartmentCode
+            FROM DepartmentList
+            WHERE LTRIM(RTRIM(DepartmentName)) <> ''
+        )
+        MERGE INTO dw_HR.DimDepartment AS Target
+        USING Prepared AS Source
+        ON Target.DepartmentCode = Source.DepartmentCode
+        WHEN NOT MATCHED BY TARGET THEN
+            INSERT (DepartmentCode, DepartmentName)
+            VALUES (Source.DepartmentCode, Source.DepartmentName);
+
+        SET @RowsInserted = @@ROWCOUNT;
+
+        -- Audit success
+        UPDATE dw_common.etl_load_audit
+        SET
+            load_end_time = SYSDATETIME(),
+            rows_inserted = @RowsInserted,
+            status = 'SUCCESS'
+        WHERE audit_id = @AuditId;
+
+    END TRY
+    BEGIN CATCH
+        SET @ErrorMsg = ERROR_MESSAGE();
+
+        UPDATE dw_common.etl_load_audit
+        SET
+            load_end_time = SYSDATETIME(),
+            status = 'FAILED',
+            error_message = @ErrorMsg
+        WHERE audit_id = @AuditId;
+
+        THROW;
+    END CATCH;
 END;
 GO
-
 -- ============================================================
 -- STEP 3: LOAD DIMJOBROLE (SCD Type 2 with Metrics Cleansing)
 -- ============================================================
@@ -88,66 +297,264 @@ CREATE OR ALTER PROCEDURE dw_HR.sp_load_dim_job_role
 AS
 BEGIN
     SET NOCOUNT ON;
-    IF @LoadDate IS NULL SET @LoadDate = CAST(GETDATE() AS DATE);
 
-    -- جدول موقت برای تجمیع اطلاعات حقوق و پوزیشن از لایه استیجینگ
-    IF OBJECT_ID('tempdb..#JobRoleCleaned') IS NOT NULL DROP TABLE #JobRoleCleaned;
-    CREATE TABLE #JobRoleCleaned (
-        PositionTitle VARCHAR(255),
-        LaborCategory VARCHAR(100),
-        OperatorStatus VARCHAR(50),
-        TypicalSalaryMin NUMERIC(18,2),
-        TypicalSalaryMax NUMERIC(18,2)
+    DECLARE @AuditId INT;
+    DECLARE @StartTime DATETIME2 = SYSDATETIME();
+    DECLARE @RowsInserted INT = 0;
+    DECLARE @RowsUpdated INT = 0;
+    DECLARE @ErrorMsg NVARCHAR(4000);
+
+    IF @LoadDate IS NULL
+        SET @LoadDate = CAST(GETDATE() AS DATE);
+
+    -- Log start of audit
+    INSERT INTO dw_common.etl_load_audit
+    (
+        procedure_name,
+        load_date,
+        load_start_time,
+        status
+    )
+    VALUES
+    (
+        'sp_load_dim_job_role',
+        @LoadDate,
+        @StartTime,
+        'IN_PROGRESS'
     );
 
-    -- واکشی و متمرکزسازی داده‌ها از استیجینگ
-    INSERT INTO #JobRoleCleaned
-    SELECT
-        LTRIM(RTRIM(PositionTitle)) AS PositionTitle,
-        MAX(LEFT(LTRIM(RTRIM(NTDLaborObjectClass)), 100)) AS LaborCategory,
-        MAX(LEFT(LTRIM(RTRIM(OperatorStatus)), 50)) AS OperatorStatus,
-        MIN(TRY_CAST(SalaryMinHourly AS NUMERIC(18,2))) AS TypicalSalaryMin,
-        MAX(TRY_CAST(SalaryMaxHourly AS NUMERIC(18,2))) AS TypicalSalaryMax
-    FROM stg_HR.stg_job_openings
-    WHERE PositionTitle IS NOT NULL AND LTRIM(RTRIM(PositionTitle)) != ''
-    GROUP BY LTRIM(RTRIM(PositionTitle));
+    SET @AuditId = SCOPE_IDENTITY();
 
-    BEGIN TRANSACTION;
+    BEGIN TRY
 
-    IF OBJECT_ID('tempdb..#JobDelta') IS NOT NULL DROP TABLE #JobDelta;
+        BEGIN TRANSACTION;
 
-    -- تشخیص رکوردهای جدید (NEW) و رکوردهایی که دچار تغییرات SCD Type 2 شده‌اند
-    SELECT
-        src.*,
-        dw.JobRoleKey,
-        CASE
-            WHEN dw.JobRoleKey IS NULL THEN 'NEW'
-            WHEN ISNULL(dw.OperatorStatus, '') != ISNULL(src.OperatorStatus, '')
-                 OR ISNULL(dw.LaborCategory, '') != ISNULL(src.LaborCategory, '')
-                 OR ISNULL(dw.TypicalSalaryMin, 0) != ISNULL(src.TypicalSalaryMin, 0)
-                 OR ISNULL(dw.TypicalSalaryMax, 0) != ISNULL(src.TypicalSalaryMax, 0)
-            THEN 'CHANGE_SCD2'
-            ELSE 'NO_CHANGE'
-        END AS ChangeAction
-    INTO #JobDelta
-    FROM #JobRoleCleaned src
-    LEFT JOIN dw_HR.DimJobRole dw ON src.PositionTitle = dw.PositionTitle AND dw.CurrentFlag = 1;
+        /*
+            ========================================================
+            1. Clean and aggregate staging data
+            ========================================================
+        */
 
-    -- ۱. منقضی کردن تاریخچه قبلی موقعیت‌های شغلی تغییر یافته
-    UPDATE dw
-    SET dw.CurrentFlag = 0,
-        dw.ExpirationDate = DATEADD(day, -1, @LoadDate)
-    FROM dw_HR.DimJobRole dw
-    INNER JOIN #JobDelta d ON dw.JobRoleKey = d.JobRoleKey
-    WHERE d.ChangeAction = 'CHANGE_SCD2';
+        IF OBJECT_ID('tempdb..#JobRoleCleaned') IS NOT NULL
+            DROP TABLE #JobRoleCleaned;
 
-    -- ۲. درج رکوردهای جدید و نسخه‌های بروزرسانی شده جدید
-    INSERT INTO dw_HR.DimJobRole (PositionTitle, LaborCategory, OperatorStatus, TypicalSalaryMin, TypicalSalaryMax, EffectiveDate, ExpirationDate, CurrentFlag)
-    SELECT PositionTitle, LaborCategory, OperatorStatus, TypicalSalaryMin, TypicalSalaryMax, @LoadDate, '9999-12-31', 1
-    FROM #JobDelta
-    WHERE ChangeAction IN ('NEW', 'CHANGE_SCD2');
+        CREATE TABLE #JobRoleCleaned
+        (
+            PositionTitle VARCHAR(255) NOT NULL,
+            LaborCategory VARCHAR(100),
+            OperatorStatus VARCHAR(50),
+            TypicalSalaryMin NUMERIC(18,2),
+            TypicalSalaryMax NUMERIC(18,2)
+        );
 
-    COMMIT TRANSACTION;
+        INSERT INTO #JobRoleCleaned
+        (
+            PositionTitle,
+            LaborCategory,
+            OperatorStatus,
+            TypicalSalaryMin,
+            TypicalSalaryMax
+        )
+        SELECT
+            LTRIM(RTRIM(position_title)) AS PositionTitle,
+
+            MAX
+            (
+                LEFT
+                (
+                    LTRIM(RTRIM(ntd_labor_object_class)),
+                    100
+                )
+            ) AS LaborCategory,
+
+            MAX
+            (
+                LEFT
+                (
+                    LTRIM(RTRIM(operator_status)),
+                    50
+                )
+            ) AS OperatorStatus,
+
+            MIN
+            (
+                TRY_CAST
+                (
+                    salary_min_hourly
+                    AS NUMERIC(18,2)
+                )
+            ) AS TypicalSalaryMin,
+
+            MAX
+            (
+                TRY_CAST
+                (
+                    salary_max_hourly
+                    AS NUMERIC(18,2)
+                )
+            ) AS TypicalSalaryMax
+
+        FROM stg_HR.stg_job_openings
+
+        WHERE position_title IS NOT NULL
+          AND LTRIM(RTRIM(position_title)) <> ''
+
+        GROUP BY
+            LTRIM(RTRIM(position_title));
+
+
+        /*
+            ========================================================
+            2. Identify new and changed job roles
+            ========================================================
+        */
+
+        IF OBJECT_ID('tempdb..#JobDelta') IS NOT NULL
+            DROP TABLE #JobDelta;
+
+        SELECT
+            src.PositionTitle,
+            src.LaborCategory,
+            src.OperatorStatus,
+            src.TypicalSalaryMin,
+            src.TypicalSalaryMax,
+
+            dw.JobRoleKey,
+
+            CASE
+                WHEN dw.JobRoleKey IS NULL
+                    THEN 'NEW'
+
+                WHEN ISNULL(dw.OperatorStatus, '') <>
+                     ISNULL(src.OperatorStatus, '')
+
+                  OR ISNULL(dw.LaborCategory, '') <>
+                     ISNULL(src.LaborCategory, '')
+
+                  OR ISNULL(dw.TypicalSalaryMin, 0) <>
+                     ISNULL(src.TypicalSalaryMin, 0)
+
+                  OR ISNULL(dw.TypicalSalaryMax, 0) <>
+                     ISNULL(src.TypicalSalaryMax, 0)
+
+                    THEN 'CHANGE_SCD2'
+
+                ELSE 'NO_CHANGE'
+            END AS ChangeAction
+
+        INTO #JobDelta
+
+        FROM #JobRoleCleaned src
+
+        LEFT JOIN dw_HR.DimJobRole dw
+            ON UPPER(LTRIM(RTRIM(dw.PositionTitle))) =
+               UPPER(LTRIM(RTRIM(src.PositionTitle)))
+
+           AND dw.CurrentFlag = 1;
+
+
+        /*
+            ========================================================
+            3. Expire changed current records
+            ========================================================
+        */
+
+        UPDATE dw
+        SET
+            dw.CurrentFlag = 0,
+            dw.ExpirationDate = DATEADD(DAY, -1, @LoadDate)
+
+        FROM dw_HR.DimJobRole dw
+
+        INNER JOIN #JobDelta d
+            ON dw.JobRoleKey = d.JobRoleKey
+
+        WHERE d.ChangeAction = 'CHANGE_SCD2';
+
+        SET @RowsUpdated = @@ROWCOUNT;
+
+
+        /*
+            ========================================================
+            4. Insert new/current versions
+            ========================================================
+        */
+
+        INSERT INTO dw_HR.DimJobRole
+        (
+            PositionTitle,
+            LaborCategory,
+            OperatorStatus,
+            TypicalSalaryMin,
+            TypicalSalaryMax,
+            EffectiveDate,
+            ExpirationDate,
+            CurrentFlag
+        )
+        SELECT
+            PositionTitle,
+            LaborCategory,
+            OperatorStatus,
+            TypicalSalaryMin,
+            TypicalSalaryMax,
+
+            CAST('2000-1-1' AS DATE),
+
+            CAST('9999-12-31' AS DATE),
+
+            1
+
+        FROM #JobDelta
+
+        WHERE ChangeAction IN
+        (
+            'NEW',
+            'CHANGE_SCD2'
+        );
+
+        SET @RowsInserted = @@ROWCOUNT;
+
+
+        COMMIT TRANSACTION;
+
+
+        /*
+            ========================================================
+            5. Audit success
+            ========================================================
+        */
+
+        UPDATE dw_common.etl_load_audit
+        SET
+            load_end_time = SYSDATETIME(),
+            rows_inserted = @RowsInserted,
+            rows_updated = @RowsUpdated,
+            status = 'SUCCESS'
+
+        WHERE audit_id = @AuditId;
+
+
+    END TRY
+
+    BEGIN CATCH
+
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        SET @ErrorMsg = ERROR_MESSAGE();
+
+        UPDATE dw_common.etl_load_audit
+        SET
+            load_end_time = SYSDATETIME(),
+            status = 'FAILED',
+            error_message = @ErrorMsg
+
+        WHERE audit_id = @AuditId;
+
+        THROW;
+
+    END CATCH;
+
 END;
 GO
 
@@ -168,5 +575,19 @@ BEGIN
     EXEC dw_HR.sp_load_dim_job_role @LoadDate = @ExecutionDate;
 
     PRINT 'ETL Pipeline Executed Successfully for Specified Dimensions.';
+    
+    -- Display audit summary
+    SELECT 
+        procedure_name,
+        load_date,
+        CONVERT(VARCHAR(19), load_start_time, 121) AS start_time,
+        CONVERT(VARCHAR(19), load_end_time, 121) AS end_time,
+        rows_inserted,
+        rows_updated,
+        status
+    FROM dw_common.etl_load_audit
+    WHERE load_date = @ExecutionDate
+      AND procedure_name IN ('sp_load_dim_employment_type', 'sp_load_dim_department', 'sp_load_dim_job_role')
+    ORDER BY audit_id DESC;
 END;
 GO
