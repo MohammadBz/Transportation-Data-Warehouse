@@ -285,13 +285,29 @@ BEGIN
             ServiceAreaSqMiles, ServiceAreaPopulation,
             EffectiveDate, ExpirationDate, CurrentFlag
         )
-        SELECT
-            NTD_ID, LegacyNTD_ID, AgencyName, OrganizationType,
-            City, State, Region,
-            ServiceAreaSqMiles, ServiceAreaPopulation,
-            CAST('2000-1-1' AS DATE), CAST('9999-12-31' AS DATE), 1
-        FROM #AgencyChanges
-        WHERE ChangeType IN ('NEW', 'CHANGE');
+SELECT
+    NTD_ID,
+    LegacyNTD_ID,
+    AgencyName,
+    OrganizationType,
+    City,
+    State,
+    Region,
+    ServiceAreaSqMiles,
+    ServiceAreaPopulation,
+
+    CASE
+        WHEN ChangeType = 'NEW'
+            THEN CAST('2000-01-01' AS DATE)
+        WHEN ChangeType = 'CHANGE'
+            THEN @LoadDate
+    END AS EffectiveDate,
+
+    CAST('9999-12-31' AS DATE) AS ExpirationDate,
+    1 AS CurrentFlag
+
+FROM #AgencyChanges
+WHERE ChangeType IN ('NEW', 'CHANGE');
 
         SET @RowsInserted = @@ROWCOUNT;
         IF @Debug = 1

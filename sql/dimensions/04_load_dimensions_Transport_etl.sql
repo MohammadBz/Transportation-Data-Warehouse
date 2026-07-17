@@ -62,13 +62,13 @@ GO
 -- ============================================================
 -- STEP 1: Load DimUrbanArea (SCD Type 2)
 -- ============================================================
-
 CREATE OR ALTER PROCEDURE dw_transport.sp_load_dim_urban_area
     @LoadDate DATE = NULL,
     @Debug BIT = 0
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
     DECLARE @AuditId INT;
     DECLARE @StartTime DATETIME2 = SYSDATETIME();
@@ -81,159 +81,385 @@ BEGIN
     IF @LoadDate IS NULL
         SET @LoadDate = CAST(GETDATE() AS DATE);
 
-    -- Log start of audit
-    INSERT INTO dw_common.etl_load_audit (
-        procedure_name, load_date, load_start_time, status
-    )
-    VALUES ('sp_load_dim_urban_area', @LoadDate, @StartTime, 'IN_PROGRESS');
-    SET @AuditId = SCOPE_IDENTITY();
 
-    CREATE TABLE #UrbanAreaChanges (
-        UACECode            VARCHAR(50),
-        UZAName             VARCHAR(255),
-        UZASqMiles          NUMERIC(18,2),
-        UZAPopulation       BIGINT,
-        UZADensity          NUMERIC(18,2),
-        ChangeType          VARCHAR(20)
+    /* ============================================================
+       1. Start audit
+       ============================================================ */
+
+    INSERT INTO dw_common.etl_load_audit
+    (
+        procedure_name,
+        load_date,
+        load_start_time,
+        status
+    )
+    VALUES
+    (
+        'sp_load_dim_urban_area',
+        @LoadDate,
+        @StartTime,
+        'IN_PROGRESS'
     );
 
-    -- Index for efficient WHERE IN lookups later
-    CREATE INDEX IX_UrbanAreaChanges_UACECode ON #UrbanAreaChanges(UACECode);
+    SET @AuditId = SCOPE_IDENTITY();
 
-    -- Identify new and changed urban areas including name changes
-    -- Pre-filter to eliminate duplicates and NULL keys before processing
-    INSERT INTO #UrbanAreaChanges (
-        UACECode, UZAName,
-        UZASqMiles, UZAPopulation, UZADensity,
-        ChangeType
-    )
-    SELECT
-        src.primary_uza_uace_code,
-        src.uza_name,
-        src.sq_miles,
-        src.population,
-        src.density,
-        CASE
-            WHEN dw.UrbanAreaKey IS NULL THEN 'NEW'
-            WHEN HASHBYTES('SHA2_256', ISNULL(src.uza_name, ''))
-                    != HASHBYTES('SHA2_256', ISNULL(dw.UZAName, ''))
-                OR ISNULL(src.sq_miles, -1) != ISNULL(dw.UZASqMiles, -1)
-                OR ISNULL(src.population, -1) != ISNULL(dw.UZAPopulation, -1)
-                OR ISNULL(src.density, -1) != ISNULL(dw.UZADensity, -1)
-                THEN 'CHANGE'
-            ELSE 'NO_CHANGE'
-        END
-    FROM (
-        -- Clean staging data (UNIQUE constraint on ntd_id prevents duplicates)
-        SELECT
-            LTRIM(RTRIM(primary_uza_uace_code)) AS primary_uza_uace_code,
-            LTRIM(RTRIM(uza_name)) AS uza_name,
-            sq_miles,
-            population,
-            density
-        FROM stg_transport.stg_agency_information
-        WHERE primary_uza_uace_code IS NOT NULL
-            AND LTRIM(RTRIM(primary_uza_uace_code)) != ''
-    ) src
-    LEFT JOIN dw_transport.DimUrbanArea dw
-        ON src.primary_uza_uace_code = dw.UACECode
-        AND dw.CurrentFlag = 1;
-
-    -- Check for duplicate business keys in staging
-    -- Note: stg_agency_information enforces UNIQUE on UACECode via ntd_id constraint
-    -- This is a safety net check for data quality
-    DECLARE @UrbanAreaDuplicateCount INT = (SELECT COUNT(*) FROM #UrbanAreaChanges) - (SELECT COUNT(DISTINCT UACECode) FROM #UrbanAreaChanges);
-    IF @UrbanAreaDuplicateCount > 0
-    BEGIN
-        IF @Debug = 1
-            PRINT CONCAT('*** WARNING: ', @UrbanAreaDuplicateCount, ' duplicate UACECodes detected in staging data ***');
-
-        -- Remove duplicates using ROW_NUMBER, keeping last occurrence by UZAName
-        ;WITH RankedDuplicates AS (
-            SELECT *,
-                   ROW_NUMBER() OVER (PARTITION BY UACECode ORDER BY UZAName DESC) AS rn
-            FROM #UrbanAreaChanges
-        )
-        DELETE FROM RankedDuplicates
-        WHERE rn > 1;
-    END
-
-    IF @Debug = 1
-    BEGIN
-        PRINT '=== URBAN AREA CHANGES DETECTED ===';
-        SELECT ChangeType, COUNT(*) AS RecordCount
-        FROM #UrbanAreaChanges
-        GROUP BY ChangeType;
-    END
-
-    BEGIN TRANSACTION;
 
     BEGIN TRY
-        -- Get duplicate count for audit
-        SET @DuplicateCount = (SELECT COUNT(*) FROM #UrbanAreaChanges) - (SELECT COUNT(DISTINCT UACECode) FROM #UrbanAreaChanges);
 
-        UPDATE dw_transport.DimUrbanArea
-        SET CurrentFlag = 0,
-            ExpirationDate = DATEADD(DAY, -1, @LoadDate)
-        WHERE CurrentFlag = 1
-            AND UrbanAreaKey != -1
-            AND UACECode IN (
-                SELECT UACECode FROM #UrbanAreaChanges WHERE ChangeType = 'CHANGE'
-            );
+        BEGIN TRANSACTION;
 
-        SET @RowsUpdated = @@ROWCOUNT;
-        IF @Debug = 1
-            PRINT CONCAT('Expired ', @RowsUpdated, ' urban area records');
 
-        INSERT INTO dw_transport.DimUrbanArea (
-            UACECode, UZAName,
-            UZASqMiles, UZAPopulation, UZADensity,
-            EffectiveDate, ExpirationDate, CurrentFlag
+        /* ============================================================
+           2. Clean and deduplicate staging data
+           ============================================================ */
+
+        IF OBJECT_ID('tempdb..#UrbanAreaCleaned') IS NOT NULL
+            DROP TABLE #UrbanAreaCleaned;
+
+        CREATE TABLE #UrbanAreaCleaned
+        (
+            UACECode        VARCHAR(50)     NOT NULL,
+            UZAName         VARCHAR(255)    NULL,
+            UZASqMiles      NUMERIC(18,2)   NULL,
+            UZAPopulation   BIGINT          NULL,
+            UZADensity      NUMERIC(18,2)   NULL
+        );
+
+
+        /*
+            One row per UACECode.
+
+            Because one urban area may appear in multiple agency
+            records, we aggregate the source data before comparing
+            it with the dimension.
+        */
+
+        INSERT INTO #UrbanAreaCleaned
+        (
+            UACECode,
+            UZAName,
+            UZASqMiles,
+            UZAPopulation,
+            UZADensity
         )
         SELECT
-            UACECode, UZAName,
-            UZASqMiles, UZAPopulation, UZADensity,
-            '2000-01-01', '9999-12-31', 1
+            UACECode,
+
+            MAX(UZAName) AS UZAName,
+
+            MAX(UZASqMiles) AS UZASqMiles,
+
+            MAX(UZAPopulation) AS UZAPopulation,
+
+            MAX(UZADensity) AS UZADensity
+
+        FROM
+        (
+            SELECT
+                LTRIM(RTRIM(primary_uza_uace_code)) AS UACECode,
+
+                NULLIF(
+                    LTRIM(RTRIM(uza_name)),
+                    ''
+                ) AS UZAName,
+
+                sq_miles AS UZASqMiles,
+
+                population AS UZAPopulation,
+
+                density AS UZADensity
+
+            FROM stg_transport.stg_agency_information
+
+            WHERE primary_uza_uace_code IS NOT NULL
+
+              AND LTRIM(RTRIM(primary_uza_uace_code)) <> ''
+        ) src
+
+        GROUP BY
+            UACECode;
+
+
+        /* ============================================================
+           3. Identify NEW / CHANGE / NO_CHANGE
+           ============================================================ */
+
+        IF OBJECT_ID('tempdb..#UrbanAreaChanges') IS NOT NULL
+            DROP TABLE #UrbanAreaChanges;
+
+
+        SELECT
+            src.UACECode,
+            src.UZAName,
+            src.UZASqMiles,
+            src.UZAPopulation,
+            src.UZADensity,
+
+            dw.UrbanAreaKey,
+
+            CASE
+
+                WHEN dw.UrbanAreaKey IS NULL
+                    THEN 'NEW'
+
+                WHEN
+                    ISNULL(src.UZAName, '') <>
+                    ISNULL(dw.UZAName, '')
+
+                 OR ISNULL(src.UZASqMiles, -1) <>
+                    ISNULL(dw.UZASqMiles, -1)
+
+                 OR ISNULL(src.UZAPopulation, -1) <>
+                    ISNULL(dw.UZAPopulation, -1)
+
+                 OR ISNULL(src.UZADensity, -1) <>
+                    ISNULL(dw.UZADensity, -1)
+
+                    THEN 'CHANGE'
+
+                ELSE 'NO_CHANGE'
+
+            END AS ChangeType
+
+        INTO #UrbanAreaChanges
+
+        FROM #UrbanAreaCleaned src
+
+        LEFT JOIN dw_transport.DimUrbanArea dw
+
+            ON src.UACECode = dw.UACECode
+
+           AND dw.CurrentFlag = 1;
+
+
+        /* ============================================================
+           4. Debug output
+           ============================================================ */
+
+        IF @Debug = 1
+        BEGIN
+
+            PRINT '=== URBAN AREA CHANGES DETECTED ===';
+
+            SELECT
+                ChangeType,
+                COUNT(*) AS RecordCount
+
+            FROM #UrbanAreaChanges
+
+            GROUP BY
+                ChangeType;
+
+        END;
+
+
+        /* ============================================================
+           5. Expire current versions for changed urban areas
+           ============================================================ */
+
+        UPDATE dw
+
+        SET
+            dw.CurrentFlag = 0,
+
+            dw.ExpirationDate =
+                DATEADD(DAY, -1, @LoadDate)
+
+        FROM dw_transport.DimUrbanArea dw
+
+        INNER JOIN #UrbanAreaChanges c
+
+            ON dw.UrbanAreaKey =
+               c.UrbanAreaKey
+
+        WHERE c.ChangeType = 'CHANGE'
+
+          AND dw.CurrentFlag = 1
+
+          AND dw.UrbanAreaKey <> -1;
+
+
+        SET @RowsUpdated = @@ROWCOUNT;
+
+
+        IF @Debug = 1
+        BEGIN
+
+            PRINT CONCAT(
+                'Expired ',
+                @RowsUpdated,
+                ' urban area records'
+            );
+
+        END;
+
+
+        /* ============================================================
+           6. Insert NEW and changed SCD Type 2 versions
+           ============================================================ */
+
+        INSERT INTO dw_transport.DimUrbanArea
+        (
+            UACECode,
+            UZAName,
+            UZASqMiles,
+            UZAPopulation,
+            UZADensity,
+            EffectiveDate,
+            ExpirationDate,
+            CurrentFlag
+        )
+
+        SELECT
+
+            UACECode,
+            UZAName,
+            UZASqMiles,
+            UZAPopulation,
+            UZADensity,
+
+            /*
+                NEW:
+                    Historical beginning date.
+
+                CHANGE:
+                    Actual date when the new version became valid.
+            */
+
+            CASE
+
+                WHEN ChangeType = 'NEW'
+
+                    THEN CAST('2000-01-01' AS DATE)
+
+                WHEN ChangeType = 'CHANGE'
+
+                    THEN @LoadDate
+
+            END AS EffectiveDate,
+
+            CAST('9999-12-31' AS DATE),
+
+            1
+
         FROM #UrbanAreaChanges
-        WHERE ChangeType IN ('NEW', 'CHANGE');
+
+        WHERE ChangeType IN
+        (
+            'NEW',
+            'CHANGE'
+        );
+
 
         SET @RowsInserted = @@ROWCOUNT;
+
+
         IF @Debug = 1
-            PRINT CONCAT('Inserted ', @RowsInserted, ' new/changed urban area records');
+        BEGIN
+
+            PRINT CONCAT(
+                'Inserted ',
+                @RowsInserted,
+                ' new/changed urban area records'
+            );
+
+        END;
+
+
+        /* ============================================================
+           7. Commit
+           ============================================================ */
 
         COMMIT TRANSACTION;
 
-        -- Get total row count for audit
-        SELECT @RowsProcessed = COUNT(*) FROM #UrbanAreaChanges;
 
-        -- Log success
+        /* ============================================================
+           8. Audit success
+           ============================================================ */
+
+        SELECT
+            @RowsProcessed = COUNT(*)
+
+        FROM #UrbanAreaCleaned;
+
+
         UPDATE dw_common.etl_load_audit
-        SET load_end_time = SYSDATETIME(),
+
+        SET
+            load_end_time = SYSDATETIME(),
+
             rows_processed = @RowsProcessed,
+
             rows_inserted = @RowsInserted,
+
             rows_updated = @RowsUpdated,
+
             duplicate_count = @DuplicateCount,
+
             status = 'SUCCESS'
+
         WHERE audit_id = @AuditId;
 
+
         IF @Debug = 1
-            PRINT CONCAT(CHAR(10), 'DimUrbanArea load complete at ', @LoadDate);
+        BEGIN
+
+            PRINT CONCAT(
+                'DimUrbanArea load complete at ',
+                @LoadDate
+            );
+
+        END;
+
+
+        DROP TABLE #UrbanAreaChanges;
+
+        DROP TABLE #UrbanAreaCleaned;
+
+
     END TRY
+
+
     BEGIN CATCH
+
         IF @@TRANCOUNT > 0
+
             ROLLBACK TRANSACTION;
+
 
         SET @ErrorMsg = ERROR_MESSAGE();
 
-        -- Log failure
+
         UPDATE dw_common.etl_load_audit
-        SET load_end_time = SYSDATETIME(),
+
+        SET
+            load_end_time = SYSDATETIME(),
+
             status = 'FAILED',
+
             error_message = @ErrorMsg
+
         WHERE audit_id = @AuditId;
 
-        RAISERROR(@ErrorMsg, 16, 1);
-    END CATCH
+
+        IF OBJECT_ID(
+            'tempdb..#UrbanAreaChanges'
+        ) IS NOT NULL
+
+            DROP TABLE #UrbanAreaChanges;
+
+
+        IF OBJECT_ID(
+            'tempdb..#UrbanAreaCleaned'
+        ) IS NOT NULL
+
+            DROP TABLE #UrbanAreaCleaned;
+
+
+        THROW;
+
+    END CATCH;
+
 END;
 GO
 

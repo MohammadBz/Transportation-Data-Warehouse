@@ -297,17 +297,18 @@ CREATE OR ALTER PROCEDURE dw_HR.sp_load_dim_job_role
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
     DECLARE @AuditId INT;
     DECLARE @StartTime DATETIME2 = SYSDATETIME();
     DECLARE @RowsInserted INT = 0;
     DECLARE @RowsUpdated INT = 0;
+    DECLARE @RowsProcessed INT = 0;
     DECLARE @ErrorMsg NVARCHAR(4000);
 
     IF @LoadDate IS NULL
         SET @LoadDate = CAST(GETDATE() AS DATE);
 
-    -- Log start of audit
     INSERT INTO dw_common.etl_load_audit
     (
         procedure_name,
@@ -329,11 +330,9 @@ BEGIN
 
         BEGIN TRANSACTION;
 
-        /*
-            ========================================================
-            1. Clean and aggregate staging data
-            ========================================================
-        */
+        /* ============================================================
+           1. Clean and aggregate staging data
+           ============================================================ */
 
         IF OBJECT_ID('tempdb..#JobRoleCleaned') IS NOT NULL
             DROP TABLE #JobRoleCleaned;
@@ -358,39 +357,29 @@ BEGIN
         SELECT
             LTRIM(RTRIM(position_title)) AS PositionTitle,
 
-            MAX
-            (
-                LEFT
-                (
+            MAX(
+                LEFT(
                     LTRIM(RTRIM(ntd_labor_object_class)),
                     100
                 )
             ) AS LaborCategory,
 
-            MAX
-            (
-                LEFT
-                (
+            MAX(
+                LEFT(
                     LTRIM(RTRIM(operator_status)),
                     50
                 )
             ) AS OperatorStatus,
 
-            MIN
-            (
-                TRY_CAST
-                (
-                    salary_min_hourly
-                    AS NUMERIC(18,2)
+            MIN(
+                TRY_CAST(
+                    salary_min_hourly AS NUMERIC(18,2)
                 )
             ) AS TypicalSalaryMin,
 
-            MAX
-            (
-                TRY_CAST
-                (
-                    salary_max_hourly
-                    AS NUMERIC(18,2)
+            MAX(
+                TRY_CAST(
+                    salary_max_hourly AS NUMERIC(18,2)
                 )
             ) AS TypicalSalaryMax
 
@@ -403,11 +392,9 @@ BEGIN
             LTRIM(RTRIM(position_title));
 
 
-        /*
-            ========================================================
-            2. Identify new and changed job roles
-            ========================================================
-        */
+        /* ============================================================
+           2. Identify new and changed roles
+           ============================================================ */
 
         IF OBJECT_ID('tempdb..#JobDelta') IS NOT NULL
             DROP TABLE #JobDelta;
@@ -453,11 +440,9 @@ BEGIN
            AND dw.CurrentFlag = 1;
 
 
-        /*
-            ========================================================
-            3. Expire changed current records
-            ========================================================
-        */
+        /* ============================================================
+           3. Expire changed current versions
+           ============================================================ */
 
         UPDATE dw
         SET
@@ -469,16 +454,15 @@ BEGIN
         INNER JOIN #JobDelta d
             ON dw.JobRoleKey = d.JobRoleKey
 
-        WHERE d.ChangeAction = 'CHANGE_SCD2';
+        WHERE d.ChangeAction = 'CHANGE_SCD2'
+          AND dw.CurrentFlag = 1;
 
         SET @RowsUpdated = @@ROWCOUNT;
 
 
-        /*
-            ========================================================
-            4. Insert new/current versions
-            ========================================================
-        */
+        /* ============================================================
+           4. Insert new SCD versions
+           ============================================================ */
 
         INSERT INTO dw_HR.DimJobRole
         (
@@ -498,11 +482,17 @@ BEGIN
             TypicalSalaryMin,
             TypicalSalaryMax,
 
-            CAST('2000-1-1' AS DATE),
+            CASE
+                WHEN ChangeAction = 'NEW'
+                    THEN CAST('2000-01-01' AS DATE)
 
-            CAST('9999-12-31' AS DATE),
+                WHEN ChangeAction = 'CHANGE_SCD2'
+                    THEN @LoadDate
+            END AS EffectiveDate,
 
-            1
+            CAST('9999-12-31' AS DATE) AS ExpirationDate,
+
+            1 AS CurrentFlag
 
         FROM #JobDelta
 
@@ -515,24 +505,33 @@ BEGIN
         SET @RowsInserted = @@ROWCOUNT;
 
 
+        /* ============================================================
+           5. Commit
+           ============================================================ */
+
         COMMIT TRANSACTION;
 
 
-        /*
-            ========================================================
-            5. Audit success
-            ========================================================
-        */
+        /* ============================================================
+           6. Audit success
+           ============================================================ */
+
+        SELECT @RowsProcessed = COUNT(*)
+        FROM #JobRoleCleaned;
 
         UPDATE dw_common.etl_load_audit
         SET
             load_end_time = SYSDATETIME(),
+            rows_processed = @RowsProcessed,
             rows_inserted = @RowsInserted,
             rows_updated = @RowsUpdated,
             status = 'SUCCESS'
 
         WHERE audit_id = @AuditId;
 
+
+        DROP TABLE #JobDelta;
+        DROP TABLE #JobRoleCleaned;
 
     END TRY
 
@@ -550,6 +549,12 @@ BEGIN
             error_message = @ErrorMsg
 
         WHERE audit_id = @AuditId;
+
+        IF OBJECT_ID('tempdb..#JobDelta') IS NOT NULL
+            DROP TABLE #JobDelta;
+
+        IF OBJECT_ID('tempdb..#JobRoleCleaned') IS NOT NULL
+            DROP TABLE #JobRoleCleaned;
 
         THROW;
 
