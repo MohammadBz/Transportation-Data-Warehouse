@@ -217,7 +217,6 @@ BEGIN
             ELSE 'NO_CHANGE'
         END
     FROM (
-        -- Clean staging data (UNIQUE constraint on ntd_id prevents duplicates)
         SELECT
             LTRIM(RTRIM(ntd_id)) AS ntd_id,
             LTRIM(RTRIM(legacy_ntd_id)) AS legacy_ntd_id,
@@ -295,19 +294,13 @@ SELECT
     Region,
     ServiceAreaSqMiles,
     ServiceAreaPopulation,
+    @LoadDate AS EffectiveDate,
 
-    CASE
-        WHEN ChangeType = 'NEW'
-            THEN CAST('2000-01-01' AS DATE)
-        WHEN ChangeType = 'CHANGE'
-            THEN @LoadDate
-    END AS EffectiveDate,
+       CAST('9999-12-31' AS DATE) AS ExpirationDate,
+       1 AS CurrentFlag
 
-    CAST('9999-12-31' AS DATE) AS ExpirationDate,
-    1 AS CurrentFlag
-
-FROM #AgencyChanges
-WHERE ChangeType IN ('NEW', 'CHANGE');
+      FROM #AgencyChanges
+         WHERE ChangeType IN ('NEW', 'CHANGE');
 
         SET @RowsInserted = @@ROWCOUNT;
         IF @Debug = 1

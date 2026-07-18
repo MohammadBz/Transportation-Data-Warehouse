@@ -74,9 +74,6 @@ BEGIN
         --         using UNION from all metric sources
         --
         -- BEST PRACTICE: Use LEFT JOIN pattern instead of FULL OUTER
-        -- - Faster (one driving table, then LEFT JOINs)
-        -- - Simpler (no complex COALESCE chains)
-        -- - Safer (no risk of mismatched dimensions creating extra rows)
         -- ============================================================
 
         -- Create metric temp tables once (avoiding 8x duplicate unpivots)
@@ -445,7 +442,7 @@ BEGIN
             COALESCE(dm.ModeKey, -1) AS ModeKey,
             COALESCE(dst.ServiceTypeKey, -1) AS ServiceTypeKey,
             COALESCE(dua.UrbanAreaKey, -1) AS UrbanAreaKey,
-            MAX(aps.UPT) AS UPT,
+            ُMAX(aps.UPT) AS UPT,
             MAX(aps.PMT) AS PMT,
             MAX(aps.VRM) AS VRM,
             MAX(aps.VRH) AS VRH,

@@ -317,26 +317,8 @@ BEGIN
             UZASqMiles,
             UZAPopulation,
             UZADensity,
-
-            /*
-                NEW:
-                    Historical beginning date.
-
-                CHANGE:
-                    Actual date when the new version became valid.
-            */
-
-            CASE
-
-                WHEN ChangeType = 'NEW'
-
-                    THEN CAST('2000-01-01' AS DATE)
-
-                WHEN ChangeType = 'CHANGE'
-
-                    THEN @LoadDate
-
-            END AS EffectiveDate,
+            @LoadDate
+            AS EffectiveDate,
 
             CAST('9999-12-31' AS DATE),
 

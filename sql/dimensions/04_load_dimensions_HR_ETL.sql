@@ -481,15 +481,7 @@ BEGIN
             OperatorStatus,
             TypicalSalaryMin,
             TypicalSalaryMax,
-
-            CASE
-                WHEN ChangeAction = 'NEW'
-                    THEN CAST('2000-01-01' AS DATE)
-
-                WHEN ChangeAction = 'CHANGE_SCD2'
-                    THEN @LoadDate
-            END AS EffectiveDate,
-
+                @LoadDate AS EffectiveDate,
             CAST('9999-12-31' AS DATE) AS ExpirationDate,
 
             1 AS CurrentFlag
