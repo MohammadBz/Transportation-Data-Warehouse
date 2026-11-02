@@ -99,4 +99,4 @@ Transportation-Data-Warehouse/
 
 - The repository is a course project focused on implementing a Kimball-style data warehouse architecture.
 - The SQL scripts include both DDL definitions and procedural ETL logic for staging, dimensions, and facts.
-- Source data is primarily HR employee and job posting records plus transportation operational datasets.
+
